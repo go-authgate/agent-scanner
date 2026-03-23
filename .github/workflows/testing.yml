@@ -17,53 +17,42 @@ jobs:
   lint:
     strategy:
       matrix:
-        go: [stable]
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.os }} @ Go ${{ matrix.go }}
+    name: Lint @ ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Setup go
         uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
+          go-version-file: go.mod
+          check-latest: true
 
-      - name: Run Generate
-        run: |
-          make generate
-
-      - name: Setup golangci-lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.9
-          args: --verbose
+      - name: Run lint
+        run: make lint
 
   test:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        go: [1.25, 1.26]
+        go: [stable]
         include:
           - os: ubuntu-latest
             go-build: ~/.cache/go-build
           - os: macos-latest
             go-build: ~/Library/Caches/go-build
-    name: ${{ matrix.os }} @ Go ${{ matrix.go }}
+    name: Test @ ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Set up Go ${{ matrix.go }}
+      - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
 
       - name: Checkout Code
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.ref }}
 
       - uses: actions/cache@v5
         with:
@@ -73,12 +62,12 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
       - name: Run Tests
-        run: |
-          make test
+        run: make test
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          flags: ${{ matrix.os }},go-${{ matrix.go }}
+          flags: ${{ matrix.os }}
           token: ${{ secrets.CODECOV_TOKEN }}
