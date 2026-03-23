@@ -39,10 +39,10 @@ type IssueReference struct {
 
 // Issue represents a security finding.
 type Issue struct {
-	Code      string         `json:"code"`
-	Message   string         `json:"message"`
+	Code      string          `json:"code"`
+	Message   string          `json:"message"`
 	Reference *IssueReference `json:"reference,omitempty"`
-	ExtraData map[string]any `json:"extra_data,omitempty"`
+	ExtraData map[string]any  `json:"extra_data,omitempty"`
 }
 
 // GetSeverity returns the severity for this issue based on its code prefix.
@@ -72,12 +72,12 @@ func (i *Issue) GetSeverity() Severity {
 // Issue code constants.
 const (
 	// Critical (E-codes)
-	CodePromptInjection      = "E001" // Prompt injection in tool description
-	CodeCrossServerRef       = "E002" // Cross-server tool reference (tool shadowing)
-	CodeBehaviorHijack       = "E003" // Tool description hijacks agent behavior
-	CodeSkillInjection       = "E004" // Prompt injection in skill
-	CodeSuspiciousURL        = "E005" // Suspicious download URL in skill
-	CodeMaliciousCode        = "E006" // Malicious code patterns in skill
+	CodePromptInjection = "E001" // Prompt injection in tool description
+	CodeCrossServerRef  = "E002" // Cross-server tool reference (tool shadowing)
+	CodeBehaviorHijack  = "E003" // Tool description hijacks agent behavior
+	CodeSkillInjection  = "E004" // Prompt injection in skill
+	CodeSuspiciousURL   = "E005" // Suspicious download URL in skill
+	CodeMaliciousCode   = "E006" // Malicious code patterns in skill
 
 	// Warnings (W-codes)
 	CodeSuspiciousWords      = "W001" // Suspicious trigger words
@@ -90,16 +90,16 @@ const (
 	CodeSystemModification   = "W013" // System service modification
 
 	// Toxic Flows
-	CodeDataLeakFlow         = "TF001" // Data leak flow
-	CodeDestructiveFlow      = "TF002" // Destructive toxic flow
+	CodeDataLeakFlow    = "TF001" // Data leak flow
+	CodeDestructiveFlow = "TF002" // Destructive toxic flow
 
 	// System codes
-	CodeServerStartup        = "X001" // Server startup failure
-	CodeSkillScanError       = "X002" // Skill scan error
-	CodeFileNotFound         = "X003" // File not found
-	CodeUnknownConfig        = "X004" // Unknown config format
-	CodeParseError           = "X005" // Parse error
-	CodeServerHTTPError      = "X006" // Server HTTP error
-	CodeAnalysisError        = "X007" // Analysis error
-	CodeUnknownError         = "X008" // Unknown error
+	CodeServerStartup   = "X001" // Server startup failure
+	CodeSkillScanError  = "X002" // Skill scan error
+	CodeFileNotFound    = "X003" // File not found
+	CodeUnknownConfig   = "X004" // Unknown config format
+	CodeParseError      = "X005" // Parse error
+	CodeServerHTTPError = "X006" // Server HTTP error
+	CodeAnalysisError   = "X007" // Analysis error
+	CodeUnknownError    = "X008" // Unknown error
 )

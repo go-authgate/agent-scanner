@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -87,8 +88,8 @@ func (t *sseTransport) readSSE(body io.ReadCloser) {
 			continue
 		}
 
-		if strings.HasPrefix(line, "event:") {
-			eventType = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
+		if after, found := strings.CutPrefix(line, "event:"); found {
+			eventType = strings.TrimSpace(after)
 		} else if strings.HasPrefix(line, "data:") {
 			if data.Len() > 0 {
 				data.WriteByte('\n')
@@ -124,7 +125,7 @@ func (t *sseTransport) handleSSEEvent(eventType, data string) {
 
 func (t *sseTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 	if t.messageURL == "" {
-		return fmt.Errorf("no message endpoint received from SSE server")
+		return errors.New("no message endpoint received from SSE server")
 	}
 
 	data, err := json.Marshal(msg)
@@ -132,7 +133,12 @@ func (t *sseTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.messageURL, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		t.messageURL,
+		bytes.NewReader(data),
+	)
 	if err != nil {
 		return err
 	}

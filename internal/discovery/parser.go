@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -50,7 +51,7 @@ func parseClaudeConfig(data []byte) (models.MCPConfig, error) {
 		return nil, err
 	}
 	if len(cfg.MCPServers) == 0 {
-		return nil, fmt.Errorf("no mcpServers found")
+		return nil, errors.New("no mcpServers found")
 	}
 	return &cfg, nil
 }
@@ -63,7 +64,7 @@ func parseClaudeCodeConfig(data []byte) (models.MCPConfig, error) {
 	// Claude Code config is distinguished by having "projects" key.
 	// Without it, fall through to plain Claude config.
 	if len(cfg.Projects) == 0 {
-		return nil, fmt.Errorf("no projects found (not a claude code config)")
+		return nil, errors.New("no projects found (not a claude code config)")
 	}
 	return &cfg, nil
 }
@@ -74,7 +75,7 @@ func parseVSCodeConfig(data []byte) (models.MCPConfig, error) {
 		return nil, err
 	}
 	if len(cfg.MCP.Servers) == 0 {
-		return nil, fmt.Errorf("no mcp.servers found")
+		return nil, errors.New("no mcp.servers found")
 	}
 	return &cfg, nil
 }
@@ -85,7 +86,7 @@ func parseVSCodeMCPConfig(data []byte) (models.MCPConfig, error) {
 		return nil, err
 	}
 	if len(cfg.Servers) == 0 {
-		return nil, fmt.Errorf("no servers found")
+		return nil, errors.New("no servers found")
 	}
 	return &cfg, nil
 }

@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/go-authgate/agent-scanner/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -20,12 +18,12 @@ toxic flows, and other security threats.`,
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
-	Run: func(_ *cobra.Command, _ []string) {
-		fmt.Printf("Agent Scanner v%s\n", version.Version)
-		fmt.Printf("  Git Commit: %s\n", version.GitCommit)
-		fmt.Printf("  Build Time: %s\n", version.BuildTime)
-		fmt.Printf("  Go Version: %s\n", version.GoVersion)
-		fmt.Printf("  OS/Arch:    %s/%s\n", version.BuildOS, version.BuildArch)
+	Run: func(cmd *cobra.Command, _ []string) {
+		cmd.Printf("Agent Scanner v%s\n", version.Version)
+		cmd.Printf("  Git Commit: %s\n", version.GitCommit)
+		cmd.Printf("  Build Time: %s\n", version.BuildTime)
+		cmd.Printf("  Go Version: %s\n", version.GoVersion)
+		cmd.Printf("  OS/Arch:    %s/%s\n", version.BuildOS, version.BuildArch)
 	},
 }
 

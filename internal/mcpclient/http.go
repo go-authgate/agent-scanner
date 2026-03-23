@@ -46,7 +46,12 @@ func (t *httpTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.server.URL, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		t.server.URL,
+		bytes.NewReader(data),
+	)
 	if err != nil {
 		return err
 	}

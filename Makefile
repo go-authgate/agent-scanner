@@ -1,4 +1,5 @@
 GO ?= go
+TOOLS_MOD := -modfile=go.tools.mod
 EXECUTABLE := agent-scanner
 GOFILES := $(shell find . -type f -name "*.go")
 TAGS ?=
@@ -45,11 +46,11 @@ coverage: test
 
 ## fmt: format go files using golangci-lint
 fmt:
-	$(GO) tool golangci-lint fmt
+	$(GO) tool $(TOOLS_MOD) golangci-lint fmt
 
 ## lint: run golangci-lint to check for issues
 lint:
-	$(GO) tool golangci-lint run
+	$(GO) tool $(TOOLS_MOD) golangci-lint run
 
 ## vet: run go vet
 vet:
@@ -86,6 +87,10 @@ rebuild: clean build
 .PHONY: build_linux_amd64 build_linux_arm64
 .PHONY: build_darwin_amd64 build_darwin_arm64 build_windows_amd64
 .PHONY: mod-download mod-tidy mod-verify check-tools version
+
+## install-tools: download tool dependencies
+install-tools:
+	$(GO) mod download $(TOOLS_MOD)
 
 ## mod-download: download go module dependencies
 mod-download:

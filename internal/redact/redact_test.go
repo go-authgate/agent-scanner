@@ -7,7 +7,7 @@ import (
 	"github.com/go-authgate/agent-scanner/internal/models"
 )
 
-func TestRedactAbsolutePaths(t *testing.T) {
+func TestAbsolutePaths(t *testing.T) {
 	tests := []struct {
 		input    string
 		contains string
@@ -18,14 +18,19 @@ func TestRedactAbsolutePaths(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := RedactAbsolutePaths(tt.input)
+		result := AbsolutePaths(tt.input)
 		if !strings.Contains(result, tt.contains) {
-			t.Errorf("RedactAbsolutePaths(%q) = %q, expected to contain %q", tt.input, result, tt.contains)
+			t.Errorf(
+				"AbsolutePaths(%q) = %q, expected to contain %q",
+				tt.input,
+				result,
+				tt.contains,
+			)
 		}
 	}
 }
 
-func TestRedactServerResult_Stdio(t *testing.T) {
+func TestServerResult_Stdio(t *testing.T) {
 	result := &models.ServerScanResult{
 		Server: &models.StdioServer{
 			Command: "my-server",
@@ -34,7 +39,7 @@ func TestRedactServerResult_Stdio(t *testing.T) {
 		},
 	}
 
-	RedactServerResult(result)
+	ServerResult(result)
 
 	stdio := result.Server.(*models.StdioServer)
 	if stdio.Env["API_KEY"] != redactedValue {
@@ -45,7 +50,7 @@ func TestRedactServerResult_Stdio(t *testing.T) {
 	}
 }
 
-func TestRedactServerResult_Remote(t *testing.T) {
+func TestServerResult_Remote(t *testing.T) {
 	result := &models.ServerScanResult{
 		Server: &models.RemoteServer{
 			URL:     "https://example.com/mcp?token=secret123",
@@ -53,7 +58,7 @@ func TestRedactServerResult_Remote(t *testing.T) {
 		},
 	}
 
-	RedactServerResult(result)
+	ServerResult(result)
 
 	remote := result.Server.(*models.RemoteServer)
 	if remote.Headers["Authorization"] != redactedValue {

@@ -51,10 +51,16 @@ func CheckBinarySignature(server *models.StdioServer) {
 	// Check for Apple Root CA in authority chain
 	if strings.Contains(output, "Apple Root CA") {
 		// Extract identifier
-		for _, line := range strings.Split(output, "\n") {
-			if strings.HasPrefix(line, "Identifier=") {
-				server.BinaryIdentifier = strings.TrimPrefix(line, "Identifier=")
-				slog.Debug("binary signed by Apple", "command", command, "identifier", server.BinaryIdentifier)
+		for line := range strings.SplitSeq(output, "\n") {
+			if after, found := strings.CutPrefix(line, "Identifier="); found {
+				server.BinaryIdentifier = after
+				slog.Debug(
+					"binary signed by Apple",
+					"command",
+					command,
+					"identifier",
+					server.BinaryIdentifier,
+				)
 				return
 			}
 		}

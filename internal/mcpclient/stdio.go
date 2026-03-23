@@ -14,13 +14,13 @@ import (
 )
 
 type stdioTransport struct {
-	server  *models.StdioServer
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	stdout  io.ReadCloser
-	stderr  io.ReadCloser
-	recvCh  chan *JSONRPCMessage
-	Stderr  []string
+	server *models.StdioServer
+	cmd    *exec.Cmd
+	stdin  io.WriteCloser
+	stdout io.ReadCloser
+	stderr io.ReadCloser
+	recvCh chan *JSONRPCMessage
+	Stderr []string
 }
 
 // NewStdioTransport creates a transport that communicates via subprocess stdio.
@@ -125,8 +125,8 @@ func (t *stdioTransport) Close() error {
 		t.stdin.Close()
 	}
 	if t.cmd != nil && t.cmd.Process != nil {
-		t.cmd.Process.Kill()
-		t.cmd.Wait() //nolint:errcheck
+		_ = t.cmd.Process.Kill()
+		_ = t.cmd.Wait()
 	}
 	return nil
 }

@@ -28,8 +28,12 @@ var suspiciousTriggerWords = []string{
 var secretPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)(api[_-]?key|apikey)\s*[:=]\s*['"]?[a-zA-Z0-9_\-]{20,}['"]?`),
 	regexp.MustCompile(`(?i)(secret|token|password|passwd|pwd)\s*[:=]\s*['"]?[^\s'"]{8,}['"]?`),
-	regexp.MustCompile(`(?i)(aws_access_key_id|aws_secret_access_key)\s*[:=]\s*['"]?[A-Za-z0-9/+=]{20,}['"]?`),
-	regexp.MustCompile(`ghp_[a-zA-Z0-9]{36}`),                         // GitHub personal access token
+	regexp.MustCompile(
+		`(?i)(aws_access_key_id|aws_secret_access_key)\s*[:=]\s*['"]?[A-Za-z0-9/+=]{20,}['"]?`,
+	),
+	regexp.MustCompile(
+		`ghp_[a-zA-Z0-9]{36}`,
+	), // GitHub personal access token
 	regexp.MustCompile(`sk-[a-zA-Z0-9]{32,}`),                         // OpenAI API key
 	regexp.MustCompile(`(?i)bearer\s+[a-zA-Z0-9_\-.]{20,}`),           // Bearer tokens
 	regexp.MustCompile(`-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----`), // Private keys

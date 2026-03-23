@@ -10,7 +10,9 @@ func GetWellKnownClients() []models.CandidateClient {
 		{
 			Name:             "windsurf",
 			ClientExistPaths: []string{"~/AppData/Roaming/Windsurf"},
-			MCPConfigPaths:   []string{"~/AppData/Roaming/Windsurf/User/globalStorage/codeium.windsurf/mcp_config.json"},
+			MCPConfigPaths: []string{
+				"~/AppData/Roaming/Windsurf/User/globalStorage/codeium.windsurf/mcp_config.json",
+			},
 		},
 		{
 			Name:             "cursor",
@@ -47,7 +49,9 @@ func GetWellKnownClients() []models.CandidateClient {
 		{
 			Name:             "kiro",
 			ClientExistPaths: []string{"~/AppData/Roaming/Kiro"},
-			MCPConfigPaths:   []string{"~/AppData/Roaming/Kiro/User/globalStorage/kiro.kiro/mcp_config.json"},
+			MCPConfigPaths: []string{
+				"~/AppData/Roaming/Kiro/User/globalStorage/kiro.kiro/mcp_config.json",
+			},
 		},
 		{
 			Name:             "codex",

@@ -72,22 +72,21 @@ func parseSkillFrontmatter(content string) (string, string) {
 
 	// Find the closing ---
 	rest := content[3:]
-	idx := strings.Index(rest, "---")
-	if idx < 0 {
+	frontmatter, body, found := strings.Cut(rest, "---")
+	if !found {
 		return "", content
 	}
 
-	frontmatter := rest[:idx]
-	body := strings.TrimSpace(rest[idx+3:])
+	body = strings.TrimSpace(body)
 
 	var name, fmDescription string
-	for _, line := range strings.Split(frontmatter, "\n") {
+	for line := range strings.SplitSeq(frontmatter, "\n") {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "name:") {
-			name = strings.TrimSpace(strings.TrimPrefix(line, "name:"))
+		if after, found := strings.CutPrefix(line, "name:"); found {
+			name = strings.TrimSpace(after)
 			name = strings.Trim(name, "\"'")
-		} else if strings.HasPrefix(line, "description:") {
-			fmDescription = strings.TrimSpace(strings.TrimPrefix(line, "description:"))
+		} else if after, found := strings.CutPrefix(line, "description:"); found {
+			fmDescription = strings.TrimSpace(after)
 			fmDescription = strings.Trim(fmDescription, "\"'")
 		}
 	}
@@ -106,7 +105,9 @@ func parseSkillFrontmatter(content string) (string, string) {
 }
 
 // traverseSkillTree recursively scans a skill directory for entities.
-func traverseSkillTree(basePath string, relativePath string) ([]models.Prompt, []models.Resource, []models.Tool) {
+func traverseSkillTree(
+	basePath, relativePath string,
+) ([]models.Prompt, []models.Resource, []models.Tool) {
 	var prompts []models.Prompt
 	var resources []models.Resource
 	var tools []models.Tool

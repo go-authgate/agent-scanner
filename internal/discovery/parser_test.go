@@ -17,7 +17,7 @@ func TestParseMCPConfigFile_Claude(t *testing.T) {
 			}
 		}
 	}`
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -49,7 +49,7 @@ func TestParseMCPConfigFile_VSCode(t *testing.T) {
 			}
 		}
 	}`
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -79,7 +79,7 @@ func TestParseMCPConfigFile_VSCodeMCP(t *testing.T) {
 			}
 		}
 	}`
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -108,7 +108,7 @@ func TestParseMCPConfigFile_JSONC(t *testing.T) {
 			}
 		}
 	}`
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -127,7 +127,7 @@ func TestParseMCPConfigFile_Unknown(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 	content := `{"some_random_key": "value"}`
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

@@ -27,8 +27,8 @@ func (c *ClaudeConfigFile) GetServers() map[string]ServerConfig {
 // ClaudeCodeConfigFile represents .claude.json format with nested projects.
 // Structure: { "projects": { "/path": { "mcpServers": { ... } } } }
 type ClaudeCodeConfigFile struct {
-	MCPServers map[string]ServerConfigJSON            `json:"mcpServers,omitempty"`
-	Projects   map[string]ClaudeCodeProjectConfig     `json:"projects,omitempty"`
+	MCPServers map[string]ServerConfigJSON        `json:"mcpServers,omitempty"`
+	Projects   map[string]ClaudeCodeProjectConfig `json:"projects,omitempty"`
 }
 
 // ClaudeCodeProjectConfig is a nested project within ClaudeCodeConfigFile.
@@ -61,8 +61,8 @@ type VSCodeConfigFile struct {
 
 // VSCodeMCPSection holds the "mcp" section of VS Code settings.
 type VSCodeMCPSection struct {
-	Inputs  map[string]any                 `json:"inputs,omitempty"`
-	Servers map[string]ServerConfigJSON    `json:"servers"`
+	Inputs  map[string]any              `json:"inputs,omitempty"`
+	Servers map[string]ServerConfigJSON `json:"servers"`
 }
 
 func (c *VSCodeConfigFile) ConfigType() string { return "vscode" }

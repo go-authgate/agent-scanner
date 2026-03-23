@@ -34,7 +34,11 @@ func NewUploader() Uploader {
 	}
 }
 
-func (u *uploader) Upload(ctx context.Context, results []models.ScanPathResult, server models.ControlServer) error {
+func (u *uploader) Upload(
+	ctx context.Context,
+	results []models.ScanPathResult,
+	server models.ControlServer,
+) error {
 	if len(results) == 0 {
 		return nil
 	}
@@ -43,7 +47,7 @@ func (u *uploader) Upload(ctx context.Context, results []models.ScanPathResult, 
 	redacted := make([]models.ScanPathResult, len(results))
 	copy(redacted, results)
 	for i := range redacted {
-		redact.RedactScanPathResult(&redacted[i])
+		redact.ScanPathResult(&redacted[i])
 	}
 
 	payload := models.ScanPathResultsCreate{

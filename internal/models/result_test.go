@@ -4,9 +4,9 @@ import "testing"
 
 func TestServerSignatureEntities(t *testing.T) {
 	sig := ServerSignature{
-		Tools:     []Tool{{Name: "t1"}, {Name: "t2"}},
-		Prompts:   []Prompt{{Name: "p1"}},
-		Resources: []Resource{{Name: "r1"}},
+		Tools:             []Tool{{Name: "t1"}, {Name: "t2"}},
+		Prompts:           []Prompt{{Name: "p1"}},
+		Resources:         []Resource{{Name: "r1"}},
 		ResourceTemplates: []ResourceTemplate{{Name: "rt1"}},
 	}
 

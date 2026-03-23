@@ -10,7 +10,9 @@ func GetWellKnownClients() []models.CandidateClient {
 		{
 			Name:             "windsurf",
 			ClientExistPaths: []string{"~/Library/Application Support/Windsurf"},
-			MCPConfigPaths:   []string{"~/Library/Application Support/Windsurf/User/globalStorage/codeium.windsurf/mcp_config.json"},
+			MCPConfigPaths: []string{
+				"~/Library/Application Support/Windsurf/User/globalStorage/codeium.windsurf/mcp_config.json",
+			},
 		},
 		{
 			Name:             "cursor",
@@ -31,7 +33,9 @@ func GetWellKnownClients() []models.CandidateClient {
 		{
 			Name:             "claude",
 			ClientExistPaths: []string{"~/Library/Application Support/Claude"},
-			MCPConfigPaths:   []string{"~/Library/Application Support/Claude/claude_desktop_config.json"},
+			MCPConfigPaths: []string{
+				"~/Library/Application Support/Claude/claude_desktop_config.json",
+			},
 		},
 		{
 			Name:             "claude code",
@@ -47,7 +51,9 @@ func GetWellKnownClients() []models.CandidateClient {
 		{
 			Name:             "kiro",
 			ClientExistPaths: []string{"~/Library/Application Support/Kiro"},
-			MCPConfigPaths:   []string{"~/Library/Application Support/Kiro/User/globalStorage/kiro.kiro/mcp_config.json"},
+			MCPConfigPaths: []string{
+				"~/Library/Application Support/Kiro/User/globalStorage/kiro.kiro/mcp_config.json",
+			},
 		},
 		{
 			Name:             "opencode",

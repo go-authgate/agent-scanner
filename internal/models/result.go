@@ -2,9 +2,9 @@ package models
 
 // InitializeResult holds the MCP server's initialization response.
 type InitializeResult struct {
-	ProtocolVersion string            `json:"protocolVersion,omitempty"`
-	ServerInfo      ServerInfo        `json:"serverInfo,omitempty"`
-	Capabilities    ServerCapabilities `json:"capabilities,omitempty"`
+	ProtocolVersion string             `json:"protocolVersion,omitempty"`
+	ServerInfo      ServerInfo         `json:"serverInfo,omitzero"`
+	Capabilities    ServerCapabilities `json:"capabilities,omitzero"`
 }
 
 // ServerInfo holds MCP server identification.
@@ -36,7 +36,11 @@ type ServerSignature struct {
 
 // Entities returns all entities from the signature as a flat slice.
 func (s *ServerSignature) Entities() []Entity {
-	entities := make([]Entity, 0, len(s.Tools)+len(s.Prompts)+len(s.Resources)+len(s.ResourceTemplates))
+	entities := make(
+		[]Entity,
+		0,
+		len(s.Tools)+len(s.Prompts)+len(s.Resources)+len(s.ResourceTemplates),
+	)
 	for i := range s.Tools {
 		entities = append(entities, &s.Tools[i])
 	}

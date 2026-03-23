@@ -12,9 +12,21 @@ import (
 
 // Inspector connects to MCP servers and extracts their signatures.
 type Inspector interface {
-	InspectServer(ctx context.Context, name string, cfg models.ServerConfig) (*models.InspectedExtension, error)
-	InspectSkill(ctx context.Context, name string, cfg *models.SkillServer) (*models.InspectedExtension, error)
-	InspectClient(ctx context.Context, client *models.ClientToInspect, scanSkills bool) (*models.InspectedClient, error)
+	InspectServer(
+		ctx context.Context,
+		name string,
+		cfg models.ServerConfig,
+	) (*models.InspectedExtension, error)
+	InspectSkill(
+		ctx context.Context,
+		name string,
+		cfg *models.SkillServer,
+	) (*models.InspectedExtension, error)
+	InspectClient(
+		ctx context.Context,
+		client *models.ClientToInspect,
+		scanSkills bool,
+	) (*models.InspectedClient, error)
 }
 
 type inspector struct {
@@ -30,7 +42,11 @@ func NewInspector(client mcpclient.Client, timeout int) Inspector {
 	}
 }
 
-func (i *inspector) InspectServer(ctx context.Context, name string, cfg models.ServerConfig) (*models.InspectedExtension, error) {
+func (i *inspector) InspectServer(
+	ctx context.Context,
+	name string,
+	cfg models.ServerConfig,
+) (*models.InspectedExtension, error) {
 	slog.Debug("inspecting server", "name", name, "type", cfg.GetServerType())
 
 	session, err := i.client.Connect(ctx, cfg, i.timeout)
@@ -38,7 +54,11 @@ func (i *inspector) InspectServer(ctx context.Context, name string, cfg models.S
 		return &models.InspectedExtension{
 			Name:   name,
 			Config: cfg,
-			Error:  models.NewScanError(fmt.Sprintf("connect: %v", err), models.ErrCatServerStartup, true),
+			Error: models.NewScanError(
+				fmt.Sprintf("connect: %v", err),
+				models.ErrCatServerStartup,
+				true,
+			),
 		}, nil
 	}
 	defer session.Close()
@@ -48,7 +68,11 @@ func (i *inspector) InspectServer(ctx context.Context, name string, cfg models.S
 		return &models.InspectedExtension{
 			Name:   name,
 			Config: cfg,
-			Error:  models.NewScanError(fmt.Sprintf("initialize: %v", err), models.ErrCatServerStartup, true),
+			Error: models.NewScanError(
+				fmt.Sprintf("initialize: %v", err),
+				models.ErrCatServerStartup,
+				true,
+			),
 		}, nil
 	}
 
@@ -100,13 +124,21 @@ func (i *inspector) InspectServer(ctx context.Context, name string, cfg models.S
 	}, nil
 }
 
-func (i *inspector) InspectSkill(_ context.Context, name string, cfg *models.SkillServer) (*models.InspectedExtension, error) {
+func (i *inspector) InspectSkill(
+	_ context.Context,
+	name string,
+	cfg *models.SkillServer,
+) (*models.InspectedExtension, error) {
 	sig, err := ParseSkillDirectory(cfg.Path)
 	if err != nil {
 		return &models.InspectedExtension{
 			Name:   name,
 			Config: cfg,
-			Error:  models.NewScanError(fmt.Sprintf("parse skill: %v", err), models.ErrCatSkillScan, true),
+			Error: models.NewScanError(
+				fmt.Sprintf("parse skill: %v", err),
+				models.ErrCatSkillScan,
+				true,
+			),
 		}, nil
 	}
 
@@ -117,7 +149,11 @@ func (i *inspector) InspectSkill(_ context.Context, name string, cfg *models.Ski
 	}, nil
 }
 
-func (i *inspector) InspectClient(ctx context.Context, client *models.ClientToInspect, scanSkills bool) (*models.InspectedClient, error) {
+func (i *inspector) InspectClient(
+	ctx context.Context,
+	client *models.ClientToInspect,
+	scanSkills bool,
+) (*models.InspectedClient, error) {
 	result := &models.InspectedClient{
 		Name:       client.Name,
 		ClientPath: client.ClientPath,
@@ -170,7 +206,7 @@ func (i *inspector) InspectClient(ctx context.Context, client *models.ClientToIn
 
 	// Collect results
 	go func() {
-		g.Wait()
+		_ = g.Wait()
 		close(results)
 	}()
 

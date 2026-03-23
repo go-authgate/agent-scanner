@@ -73,9 +73,9 @@ func runScan(cmd *cobra.Command, args []string) error {
 	// Format output
 	formatter := selectFormatter()
 	return formatter.FormatResults(results, output.FormatOptions{
-		PrintErrors:      commonFlags.PrintErrors,
-		PrintFullDescs:   commonFlags.PrintFullDescs,
-		InspectMode:      false,
+		PrintErrors:    commonFlags.PrintErrors,
+		PrintFullDescs: commonFlags.PrintFullDescs,
+		InspectMode:    false,
 	})
 }
 

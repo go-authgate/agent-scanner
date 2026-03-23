@@ -10,10 +10,10 @@ type ScalarToolLabels struct {
 
 // ToxicFlowExtraData holds additional data for toxic flow issues.
 type ToxicFlowExtraData struct {
-	SourceServer  string   `json:"source_server"`
-	SourceTool    string   `json:"source_tool"`
-	SinkServer    string   `json:"sink_server"`
-	SinkTool      string   `json:"sink_tool"`
-	PrivateTools  []string `json:"private_tools,omitempty"`
-	FlowType      string   `json:"flow_type"`
+	SourceServer string   `json:"source_server"`
+	SourceTool   string   `json:"source_tool"`
+	SinkServer   string   `json:"sink_server"`
+	SinkTool     string   `json:"sink_tool"`
+	PrivateTools []string `json:"private_tools,omitempty"`
+	FlowType     string   `json:"flow_type"`
 }

@@ -41,17 +41,20 @@ type analysisRequest struct {
 }
 
 type analysisServer struct {
-	Name  string       `json:"name"`
+	Name  string        `json:"name"`
 	Tools []models.Tool `json:"tools"`
 }
 
 // analysisResponse is the response from the analysis API.
 type analysisResponse struct {
-	Issues []models.Issue             `json:"issues"`
+	Issues []models.Issue              `json:"issues"`
 	Labels [][]models.ScalarToolLabels `json:"labels"`
 }
 
-func (a *remoteAnalyzer) Analyze(ctx context.Context, results []models.ScanPathResult) ([]models.ScanPathResult, error) {
+func (a *remoteAnalyzer) Analyze(
+	ctx context.Context,
+	results []models.ScanPathResult,
+) ([]models.ScanPathResult, error) {
 	if a.analysisURL == "" {
 		slog.Debug("no analysis URL configured, skipping remote analysis")
 		return results, nil
@@ -68,7 +71,10 @@ func (a *remoteAnalyzer) Analyze(ctx context.Context, results []models.ScanPathR
 	return results, nil
 }
 
-func (a *remoteAnalyzer) analyzePathResult(ctx context.Context, result *models.ScanPathResult) error {
+func (a *remoteAnalyzer) analyzePathResult(
+	ctx context.Context,
+	result *models.ScanPathResult,
+) error {
 	// Build analysis request from verified servers
 	var servers []analysisServer
 	for _, server := range result.Servers {
@@ -126,7 +132,12 @@ func (a *remoteAnalyzer) analyzePathResult(ctx context.Context, result *models.S
 }
 
 func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analysisResponse) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.analysisURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		a.analysisURL,
+		bytes.NewReader(body),
+	)
 	if err != nil {
 		return err
 	}

@@ -49,10 +49,7 @@ func New(cfg Config) *Pipeline {
 // Run executes the full pipeline: Discover → Inspect → Analyze → Push.
 func (p *Pipeline) Run(ctx context.Context) ([]models.ScanPathResult, error) {
 	// Stage 1: Discovery & Inspection
-	results, err := p.inspect(ctx)
-	if err != nil {
-		return nil, err
-	}
+	results := p.inspect(ctx)
 
 	if p.config.InspectOnly {
 		return results, nil
@@ -67,7 +64,7 @@ func (p *Pipeline) Run(ctx context.Context) ([]models.ScanPathResult, error) {
 	return results, nil
 }
 
-func (p *Pipeline) inspect(ctx context.Context) ([]models.ScanPathResult, error) {
+func (p *Pipeline) inspect(ctx context.Context) []models.ScanPathResult {
 	var allClients []*models.ClientToInspect
 
 	if len(p.config.Paths) > 0 {
@@ -109,10 +106,13 @@ func (p *Pipeline) inspect(ctx context.Context) ([]models.ScanPathResult, error)
 		results = append(results, result...)
 	}
 
-	return results, nil
+	return results
 }
 
-func (p *Pipeline) analyze(ctx context.Context, results []models.ScanPathResult) []models.ScanPathResult {
+func (p *Pipeline) analyze(
+	ctx context.Context,
+	results []models.ScanPathResult,
+) []models.ScanPathResult {
 	// Run remote analysis if configured
 	if p.config.Analyzer != nil {
 		analyzed, err := p.config.Analyzer.Analyze(ctx, results)

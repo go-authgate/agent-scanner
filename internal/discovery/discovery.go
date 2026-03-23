@@ -14,9 +14,16 @@ type Discoverer interface {
 	// DiscoverClients finds all installed AI agent clients on this machine.
 	DiscoverClients(ctx context.Context, allUsers bool) []models.CandidateClient
 	// ResolveClient resolves a candidate into inspectable clients with parsed configs.
-	ResolveClient(ctx context.Context, candidate models.CandidateClient) ([]*models.ClientToInspect, error)
+	ResolveClient(
+		ctx context.Context,
+		candidate models.CandidateClient,
+	) ([]*models.ClientToInspect, error)
 	// ClientFromPath resolves a direct file path into a ClientToInspect.
-	ClientFromPath(ctx context.Context, path string, scanSkills bool) ([]*models.ClientToInspect, error)
+	ClientFromPath(
+		ctx context.Context,
+		path string,
+		scanSkills bool,
+	) ([]*models.ClientToInspect, error)
 }
 
 type discoverer struct{}
@@ -53,7 +60,10 @@ func (d *discoverer) DiscoverClients(_ context.Context, allUsers bool) []models.
 	return found
 }
 
-func (d *discoverer) ResolveClient(_ context.Context, candidate models.CandidateClient) ([]*models.ClientToInspect, error) {
+func (d *discoverer) ResolveClient(
+	_ context.Context,
+	candidate models.CandidateClient,
+) ([]*models.ClientToInspect, error) {
 	var clients []*models.ClientToInspect
 
 	homeDirs := getHomeDirs(false)
@@ -99,7 +109,11 @@ func (d *discoverer) ResolveClient(_ context.Context, candidate models.Candidate
 	return clients, nil
 }
 
-func (d *discoverer) ClientFromPath(_ context.Context, path string, scanSkills bool) ([]*models.ClientToInspect, error) {
+func (d *discoverer) ClientFromPath(
+	_ context.Context,
+	path string,
+	scanSkills bool,
+) ([]*models.ClientToInspect, error) {
 	// Check if it's a direct scan URI
 	if IsDirectScan(path) {
 		name, serverCfg := DirectScanToServerConfig(path)
@@ -264,7 +278,7 @@ func getHomeDirs(allUsers bool) []string {
 }
 
 // expandPath replaces ~ with the given home directory.
-func expandPath(path string, homeDir string) string {
+func expandPath(path, homeDir string) string {
 	if len(path) > 0 && path[0] == '~' {
 		return filepath.Join(homeDir, path[1:])
 	}

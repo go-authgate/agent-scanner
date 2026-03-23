@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -17,8 +15,8 @@ func newInstallCmd() *cobra.Command {
 	return cmd
 }
 
-func runInstall(_ *cobra.Command, _ []string) error {
+func runInstall(cmd *cobra.Command, _ []string) error {
 	// TODO: Implement MCP server installation in Phase 8
-	fmt.Println("MCP server installation not yet implemented")
+	cmd.Println("MCP server installation not yet implemented")
 	return nil
 }

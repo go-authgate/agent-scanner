@@ -10,10 +10,10 @@ type CandidateClient struct {
 
 // ClientToInspect represents a client with resolved config paths ready for inspection.
 type ClientToInspect struct {
-	Name       string                        `json:"name"`
-	ClientPath string                        `json:"client_path"`
-	MCPConfigs map[string]MCPConfigOrError   `json:"mcp_configs"`
-	SkillsDirs map[string][]SkillEntry       `json:"skills_dirs,omitempty"`
+	Name       string                      `json:"name"`
+	ClientPath string                      `json:"client_path"`
+	MCPConfigs map[string]MCPConfigOrError `json:"mcp_configs"`
+	SkillsDirs map[string][]SkillEntry     `json:"skills_dirs,omitempty"`
 }
 
 // MCPConfigOrError holds either a parsed config or an error.
@@ -24,7 +24,7 @@ type MCPConfigOrError struct {
 
 // SkillEntry represents a discovered skill.
 type SkillEntry struct {
-	Name   string      `json:"name"`
+	Name   string       `json:"name"`
 	Server *SkillServer `json:"server"`
 }
 
@@ -38,7 +38,7 @@ type InspectedExtension struct {
 
 // InspectedClient represents a fully inspected AI agent client.
 type InspectedClient struct {
-	Name       string                              `json:"name"`
-	ClientPath string                              `json:"client_path"`
-	Extensions map[string][]InspectedExtension     `json:"extensions"`
+	Name       string                          `json:"name"`
+	ClientPath string                          `json:"client_path"`
+	Extensions map[string][]InspectedExtension `json:"extensions"`
 }

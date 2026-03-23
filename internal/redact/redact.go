@@ -10,21 +10,23 @@ import (
 const redactedValue = "**REDACTED**"
 
 var absolutePathPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?:/[a-zA-Z0-9._-]+){3,}`),                   // Unix paths
-	regexp.MustCompile(`(?:~[/\\][a-zA-Z0-9._-]+)+`),                 // Home-relative paths
+	regexp.MustCompile(`(?:/[a-zA-Z0-9._-]+){3,}`), // Unix paths
+	regexp.MustCompile(
+		`(?:~[/\\][a-zA-Z0-9._-]+)+`,
+	), // Home-relative paths
 	regexp.MustCompile(`[A-Z]:[\\\/](?:[a-zA-Z0-9._-]+[\\\/])*[a-zA-Z0-9._-]+`), // Windows paths
 }
 
-// RedactAbsolutePaths replaces absolute file paths in text.
-func RedactAbsolutePaths(text string) string {
+// AbsolutePaths replaces absolute file paths in text.
+func AbsolutePaths(text string) string {
 	for _, pattern := range absolutePathPatterns {
 		text = pattern.ReplaceAllString(text, redactedValue)
 	}
 	return text
 }
 
-// RedactServerResult redacts sensitive data from a ServerScanResult.
-func RedactServerResult(result *models.ServerScanResult) {
+// ServerResult redacts sensitive data from a ServerScanResult.
+func ServerResult(result *models.ServerScanResult) {
 	switch srv := result.Server.(type) {
 	case *models.StdioServer:
 		// Redact environment variable values
@@ -50,17 +52,17 @@ func RedactServerResult(result *models.ServerScanResult) {
 
 	// Redact traceback paths
 	if result.Error != nil && result.Error.Traceback != "" {
-		result.Error.Traceback = RedactAbsolutePaths(result.Error.Traceback)
+		result.Error.Traceback = AbsolutePaths(result.Error.Traceback)
 	}
 }
 
-// RedactScanPathResult redacts all sensitive data in a ScanPathResult.
-func RedactScanPathResult(result *models.ScanPathResult) {
+// ScanPathResult redacts all sensitive data in a ScanPathResult.
+func ScanPathResult(result *models.ScanPathResult) {
 	if result.Error != nil && result.Error.Traceback != "" {
-		result.Error.Traceback = RedactAbsolutePaths(result.Error.Traceback)
+		result.Error.Traceback = AbsolutePaths(result.Error.Traceback)
 	}
 	for i := range result.Servers {
-		RedactServerResult(&result.Servers[i])
+		ServerResult(&result.Servers[i])
 	}
 }
 

@@ -1,11 +1,12 @@
 package discovery
 
 import (
-	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"strconv"
 )
 
 // getReadableHomeDirs returns all readable home directories on the system.
@@ -93,7 +94,7 @@ func getHomeDirsWindows() []string {
 func getSystemUsers() []*user.User {
 	var users []*user.User
 	for uid := 1000; uid < 65534; uid++ {
-		u, err := user.LookupId(fmt.Sprintf("%d", uid))
+		u, err := user.LookupId(strconv.Itoa(uid))
 		if err != nil {
 			continue
 		}
@@ -112,10 +113,5 @@ func isReadable(path string) bool {
 }
 
 func isInDirs(path string, dirs []string) bool {
-	for _, d := range dirs {
-		if d == path {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(dirs, path)
 }

@@ -123,10 +123,20 @@ func TestParsePackageNameVersion(t *testing.T) {
 		t.Run(tt.pkg, func(t *testing.T) {
 			name, version := parsePackageNameVersion(tt.pkg)
 			if name != tt.wantName {
-				t.Errorf("parsePackageNameVersion(%q) name = %q, want %q", tt.pkg, name, tt.wantName)
+				t.Errorf(
+					"parsePackageNameVersion(%q) name = %q, want %q",
+					tt.pkg,
+					name,
+					tt.wantName,
+				)
 			}
 			if version != tt.wantVersion {
-				t.Errorf("parsePackageNameVersion(%q) version = %q, want %q", tt.pkg, version, tt.wantVersion)
+				t.Errorf(
+					"parsePackageNameVersion(%q) version = %q, want %q",
+					tt.pkg,
+					version,
+					tt.wantVersion,
+				)
 			}
 		})
 	}

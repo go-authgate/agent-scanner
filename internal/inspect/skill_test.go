@@ -17,12 +17,20 @@ description: A test skill
 
 This is the skill body content.
 `
-	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillContent), 0644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(dir, "SKILL.md"),
+		[]byte(skillContent),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create a sub-file
-	if err := os.WriteFile(filepath.Join(dir, "helper.py"), []byte("def help(): pass"), 0644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(dir, "helper.py"),
+		[]byte("def help(): pass"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
 
@@ -90,10 +98,10 @@ func TestTraverseSkillTree(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create files of different types
-	os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\nname: test\n---"), 0644)
-	os.WriteFile(filepath.Join(dir, "readme.md"), []byte("# Readme"), 0644)
-	os.WriteFile(filepath.Join(dir, "script.py"), []byte("print('hello')"), 0644)
-	os.WriteFile(filepath.Join(dir, "data.json"), []byte("{}"), 0644)
+	os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\nname: test\n---"), 0o644)
+	os.WriteFile(filepath.Join(dir, "readme.md"), []byte("# Readme"), 0o644)
+	os.WriteFile(filepath.Join(dir, "script.py"), []byte("print('hello')"), 0o644)
+	os.WriteFile(filepath.Join(dir, "data.json"), []byte("{}"), 0o644)
 
 	prompts, resources, tools := traverseSkillTree(dir, "")
 

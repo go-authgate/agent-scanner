@@ -32,7 +32,11 @@ func NewClient() Client {
 	return &client{}
 }
 
-func (c *client) Connect(ctx context.Context, cfg models.ServerConfig, timeout int) (Session, error) {
+func (c *client) Connect(
+	ctx context.Context,
+	cfg models.ServerConfig,
+	timeout int,
+) (Session, error) {
 	var transport Transport
 
 	switch srv := cfg.(type) {
