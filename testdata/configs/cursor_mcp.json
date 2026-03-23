@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "cursor-server": {
+      "command": "uvx",
+      "args": ["mcp-server-sqlite", "--db", "test.db"]
+    }
+  }
+}

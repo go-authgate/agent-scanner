@@ -1,0 +1,19 @@
+{
+  // VS Code settings with MCP configuration
+  "editor.fontSize": 14,
+  "mcp": {
+    "servers": {
+      "my-mcp-server": {
+        "command": "node",
+        "args": ["server.js"]
+      },
+      "remote-server": {
+        "url": "https://example.com/mcp",
+        "type": "sse",
+        "headers": {
+          "Authorization": "Bearer my-token"
+        }
+      }
+    }
+  }
+}

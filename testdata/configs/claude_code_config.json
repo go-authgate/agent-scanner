@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "global-server": {
+      "command": "my-global-server"
+    }
+  },
+  "projects": {
+    "/home/user/project-a": {
+      "mcpServers": {
+        "project-server": {
+          "command": "project-mcp",
+          "args": ["--port", "3000"]
+        }
+      }
+    }
+  }
+}
