@@ -9,6 +9,7 @@ Inspired by [snyk/agent-scan](https://github.com/snyk/agent-scan), reimplemented
 - **Auto-discovery** of 11+ AI agent clients (Claude Desktop, Claude Code, Cursor, VS Code, Windsurf, Gemini CLI, Kiro, Codex, etc.)
 - **MCP protocol client** supporting stdio, SSE, and streamable HTTP transports
 - **13 security rules** detecting prompt injections, tool shadowing, hardcoded secrets, malicious code, toxic flows, and more
+- **Skill scanning** for agent skill directories containing `SKILL.md`
 - **Direct scanning** from package managers (`npm:`, `pypi:`, `oci://`) and URLs (`sse://`, `streamable-http://`)
 - **Cross-platform** support (macOS, Linux, Windows)
 - **Single binary** with zero runtime dependencies
@@ -65,6 +66,26 @@ agent-scanner scan npm:@modelcontextprotocol/server-filesystem@latest
 agent-scanner scan pypi:mcp-server-sqlite@0.1.0
 ```
 
+### Scan Skills
+
+Scan a single skill directory (must contain `SKILL.md`):
+
+```bash
+agent-scanner scan ./path/to/my-skill
+```
+
+Scan a parent directory containing multiple skills:
+
+```bash
+agent-scanner scan ./skills/
+```
+
+Auto-discover and scan skills from known client directories (e.g. `~/.claude/commands`):
+
+```bash
+agent-scanner scan --skills
+```
+
 ### Inspect
 
 List tools, prompts, and resources without security analysis:
@@ -75,17 +96,17 @@ agent-scanner inspect
 
 ### Options
 
-```bash
---json                  Output results as JSON
---skills                Include skill directory scanning
---verbose               Enable verbose logging
---server-timeout N      MCP server connection timeout in seconds (default: 10)
---skip-ssl-verify       Disable SSL certificate verification
---scan-all-users        Scan all user home directories
---print-errors          Show server startup errors/tracebacks
+```text
+--json                     Output results as JSON
+--skills                   Include skill directory scanning
+--verbose                  Enable verbose logging
+--server-timeout N         MCP server connection timeout in seconds (default: 10)
+--skip-ssl-verify          Disable SSL certificate verification
+--scan-all-users           Scan all user home directories
+--print-errors             Show server startup errors/tracebacks
 --print-full-descriptions  Show full entity descriptions
---analysis-url URL      Remote verification server URL
---control-server URL    Upload results to control server
+--analysis-url URL         Remote verification server URL
+--control-server URL       Upload results to control server
 ```
 
 ### JSON output
@@ -145,7 +166,7 @@ agent-scanner scan --json | jq '.[] | .issues'
 
 ## Architecture
 
-```bash
+```text
 Discovery → Inspect → Analyze → Report/Push
 ```
 
@@ -158,7 +179,7 @@ Discovery → Inspect → Analyze → Report/Push
 ## Development
 
 ```bash
-make test       # Run tests with race detector
+make test       # Run tests with coverage
 make lint       # Run golangci-lint
 make fmt        # Format code
 make build      # Build binary
