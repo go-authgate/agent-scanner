@@ -25,9 +25,15 @@ type httpTransport struct {
 }
 
 // newHTTPClient builds an http.Client with an optionally insecure TLS config.
+// It preserves any existing TLS settings on the cloned default transport.
 func newHTTPClient(timeout time.Duration, skipSSLVerify bool) *http.Client {
 	t := http.DefaultTransport.(*http.Transport).Clone()
-	t.TLSClientConfig = &tls.Config{InsecureSkipVerify: skipSSLVerify} //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+	if t.TLSClientConfig == nil {
+		t.TLSClientConfig = &tls.Config{} //nolint:gosec // empty config, InsecureSkipVerify set below only when flag is true
+	}
+	if skipSSLVerify {
+		t.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+	}
 	return &http.Client{Timeout: timeout, Transport: t}
 }
 
@@ -149,5 +155,8 @@ func (t *httpTransport) Receive() <-chan *JSONRPCMessage {
 }
 
 func (t *httpTransport) Close() error {
+	if tr, ok := t.httpClient.Transport.(*http.Transport); ok {
+		tr.CloseIdleConnections()
+	}
 	return nil
 }
