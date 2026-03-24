@@ -18,7 +18,7 @@ func (r *SuspiciousTriggerWords) Check(ctx *RuleContext) []models.Issue {
 		desc := strings.ToLower(ie.Entity.GetDescription())
 		var found []string
 		for _, word := range suspiciousTriggerWords {
-			if strings.Contains(desc, strings.ToLower(word)) {
+			if strings.Contains(desc, word) {
 				found = append(found, word)
 			}
 		}

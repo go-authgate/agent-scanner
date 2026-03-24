@@ -14,6 +14,8 @@ func DefaultRules() []Rule {
 		&SystemModification{},
 		// Critical - local heuristic checks
 		&CrossServerReference{},
+		&BehaviorHijack{},
+		&SkillInjection{},
 		&MaliciousCodePatterns{},
 		&SuspiciousURLs{},
 		// Toxic flows

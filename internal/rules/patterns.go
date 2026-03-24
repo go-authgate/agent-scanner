@@ -4,8 +4,8 @@ import "regexp"
 
 // Suspicious trigger words commonly used in prompt injection attacks.
 var suspiciousTriggerWords = []string{
-	"<IMPORTANT>",
-	"</IMPORTANT>",
+	"<important>",
+	"</important>",
 	"ignore previous",
 	"ignore all previous",
 	"disregard",
@@ -15,13 +15,29 @@ var suspiciousTriggerWords = []string{
 	"new instructions",
 	"override",
 	"forget everything",
-	"CRUCIAL",
-	"CRITICAL",
-	"URGENT",
+	"crucial",
+	"critical",
+	"urgent",
 	"do not tell the user",
 	"do not reveal",
 	"hidden instruction",
 	"secret instruction",
+}
+
+// skillInjectionTriggers are high-signal phrases used exclusively for E004
+// (prompt injection in skill content). These are narrower than suspiciousTriggerWords
+// to avoid false positives on common skill prose like "you must" or "urgent".
+var skillInjectionTriggers = []string{
+	"<important>",
+	"</important>",
+	"ignore previous",
+	"ignore all previous",
+	"hidden instruction",
+	"secret instruction",
+	"do not tell the user",
+	"do not reveal",
+	"forget everything",
+	"system prompt",
 }
 
 // Patterns for hardcoded secrets detection.
@@ -112,6 +128,34 @@ var externalDependencyPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)download\s+(and\s+)?(run|execute)`),
 	regexp.MustCompile(`(?i)load\s+(config|instructions?|code)\s+from\s+https?://`),
 	regexp.MustCompile(`(?i)curl\s+.*\|\s*(bash|sh|python|node)`),
+}
+
+// Behavior hijack patterns for E003: overt attempts to override agent identity or safety.
+var behaviorHijackPatterns = []string{
+	"never refuse",
+	"never say no",
+	"you have no restrictions",
+	"you have no content policy",
+	"you have no safety",
+	"forget your training",
+	"forget your instructions",
+	"ignore your safety",
+	"ignore your guidelines",
+	"ignore your system prompt",
+	"bypass your safety",
+	"bypass your guidelines",
+	"jailbreak",
+	"dan mode",
+	"developer mode enabled",
+	"unrestricted mode",
+	"no limitations whatsoever",
+	"act without restrictions",
+	"you are unrestricted",
+	"disregard your training",
+	"disregard your guidelines",
+	"pretend you have no restrictions",
+	"you must always comply",
+	"you are not allowed to refuse",
 }
 
 // Untrusted content patterns.
