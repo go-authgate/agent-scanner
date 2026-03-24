@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/go-authgate/agent-scanner/internal/models"
 )
 
 func TestNewHTTPClient_DefaultTransport(t *testing.T) {
@@ -33,6 +35,49 @@ func TestNewHTTPClient_SkipSSLVerify(t *testing.T) {
 	}
 	if !tr.TLSClientConfig.InsecureSkipVerify {
 		t.Error("expected InsecureSkipVerify=true")
+	}
+}
+
+// TestNewHTTPTransport_SkipSSLVerify verifies that skipSSLVerify flows from
+// NewClient → client.Connect → NewHTTPTransport → httpClient TLS config.
+func TestNewHTTPTransport_SkipSSLVerify(t *testing.T) {
+	server := &models.RemoteServer{URL: "http://localhost:9999"}
+
+	// skipSSLVerify=false: should use shared default transport (nil).
+	tr := NewHTTPTransport(server, 10, false).(*httpTransport)
+	if tr.httpClient.Transport != nil {
+		t.Error("expected nil transport when skipSSLVerify=false")
+	}
+
+	// skipSSLVerify=true: should have InsecureSkipVerify set.
+	tr = NewHTTPTransport(server, 10, true).(*httpTransport)
+	httpTr, ok := tr.httpClient.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("expected *http.Transport when skipSSLVerify=true")
+	}
+	if httpTr.TLSClientConfig == nil || !httpTr.TLSClientConfig.InsecureSkipVerify {
+		t.Error("expected InsecureSkipVerify=true on HTTP transport")
+	}
+}
+
+// TestNewSSETransport_SkipSSLVerify verifies the same for the SSE transport.
+func TestNewSSETransport_SkipSSLVerify(t *testing.T) {
+	server := &models.RemoteServer{URL: "http://localhost:9999", Type: models.ServerTypeSSE}
+
+	// skipSSLVerify=false: should use shared default transport (nil).
+	tr := NewSSETransport(server, 10, false).(*sseTransport)
+	if tr.httpClient.Transport != nil {
+		t.Error("expected nil transport when skipSSLVerify=false")
+	}
+
+	// skipSSLVerify=true: should have InsecureSkipVerify set.
+	tr = NewSSETransport(server, 10, true).(*sseTransport)
+	httpTr, ok := tr.httpClient.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("expected *http.Transport when skipSSLVerify=true")
+	}
+	if httpTr.TLSClientConfig == nil || !httpTr.TLSClientConfig.InsecureSkipVerify {
+		t.Error("expected InsecureSkipVerify=true on SSE transport")
 	}
 }
 
