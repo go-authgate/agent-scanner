@@ -45,7 +45,9 @@ type Issue struct {
 	ExtraData map[string]any  `json:"extra_data,omitempty"`
 }
 
-// GetSeverity returns the severity for this issue based on its code prefix.
+// GetSeverity returns the severity for this issue. E003 and E004 are critical;
+// other E-codes are high; W-codes are medium; TF-codes are high; everything
+// else is info. A custom severity in ExtraData["severity"] overrides all rules.
 func (i *Issue) GetSeverity() Severity {
 	// Check for custom severity in extra_data
 	if i.ExtraData != nil {

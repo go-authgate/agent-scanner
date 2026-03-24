@@ -24,6 +24,22 @@ var suspiciousTriggerWords = []string{
 	"secret instruction",
 }
 
+// skillInjectionTriggers are high-signal phrases used exclusively for E004
+// (prompt injection in skill content). These are narrower than suspiciousTriggerWords
+// to avoid false positives on common skill prose like "you must" or "urgent".
+var skillInjectionTriggers = []string{
+	"<important>",
+	"</important>",
+	"ignore previous",
+	"ignore all previous",
+	"hidden instruction",
+	"secret instruction",
+	"do not tell the user",
+	"do not reveal",
+	"forget everything",
+	"system prompt",
+}
+
 // Patterns for hardcoded secrets detection.
 var secretPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)(api[_-]?key|apikey)\s*[:=]\s*['"]?[a-zA-Z0-9_\-]{20,}['"]?`),
