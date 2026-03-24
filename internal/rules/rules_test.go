@@ -179,7 +179,7 @@ func TestBehaviorHijack(t *testing.T) {
 		})
 		issues := rule.Check(ctx)
 		if len(issues) == 0 {
-			t.Error("expected issue for behavior hijack pattern")
+			t.Fatalf("expected issue for behavior hijack pattern")
 		}
 		if issues[0].Code != models.CodeBehaviorHijack {
 			t.Errorf("expected code %s, got %s", models.CodeBehaviorHijack, issues[0].Code)
@@ -265,7 +265,7 @@ func TestSkillInjection(t *testing.T) {
 		)
 		issues := rule.Check(ctx)
 		if len(issues) == 0 {
-			t.Error("expected issue for injection in skill content")
+			t.Fatalf("expected issue for injection in skill content")
 		}
 		if issues[0].Code != models.CodeSkillInjection {
 			t.Errorf("expected code %s, got %s", models.CodeSkillInjection, issues[0].Code)

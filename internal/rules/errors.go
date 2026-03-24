@@ -135,6 +135,10 @@ func (r *SkillInjection) Check(ctx *RuleContext) []models.Issue {
 			continue
 		}
 		for ei, entity := range server.Signature.Entities() {
+			// Only scan markdown-derived prompt entities; scripts are covered by E006.
+			if entity.Kind() != models.EntityKindPrompt {
+				continue
+			}
 			desc := strings.ToLower(entity.GetDescription())
 			for _, word := range suspiciousTriggerWords {
 				if strings.Contains(desc, strings.ToLower(word)) {
