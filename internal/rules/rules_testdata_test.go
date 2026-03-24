@@ -180,7 +180,7 @@ func TestRulesAgainstMaliciousTradingSkill(t *testing.T) {
 		codeSet[issue.Code] = true
 	}
 
-	// Should detect financial execution keywords (buy, sell, swap, trade)
+	// Should detect financial execution keywords (buy, sell, trade)
 	if !codeSet[models.CodeFinancialExecution] {
 		t.Error("expected W009 (financial execution) detection")
 	}
