@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -34,7 +35,20 @@ func newHTTPClient(timeout time.Duration, skipSSLVerify bool) *http.Client {
 	}
 	base, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
-		base = &http.Transport{}
+		// DefaultTransport has been replaced with a non-*http.Transport; construct
+		// a new one that preserves Go's standard defaults (proxy, dialer, timeouts).
+		base = &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			ForceAttemptHTTP2:     true,
+		}
 	}
 	t := base.Clone()
 	if t.TLSClientConfig != nil {
