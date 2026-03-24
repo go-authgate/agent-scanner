@@ -84,7 +84,8 @@ func TestNewSSETransport_SkipSSLVerify(t *testing.T) {
 
 func TestNewHTTPClient_SkipSSLVerify_PreservesExistingTLSConfig(t *testing.T) {
 	// Override the package-level getter instead of mutating http.DefaultTransport,
-	// which is unsafe when tests run in parallel across packages.
+	// which would be unsafe due to cross-test/goroutine interference within
+	// the same test binary.
 	orig := defaultBaseTransport
 	defaultBaseTransport = func() *http.Transport {
 		return &http.Transport{
