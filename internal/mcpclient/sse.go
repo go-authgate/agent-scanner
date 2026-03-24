@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,16 +27,11 @@ type sseTransport struct {
 
 // NewSSETransport creates a transport that uses Server-Sent Events.
 func NewSSETransport(server *models.RemoteServer, timeout int, skipSSLVerify bool) Transport {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: skipSSLVerify} //nolint:gosec
 	return &sseTransport{
-		server:  server,
-		timeout: timeout,
-		httpClient: &http.Client{
-			Timeout:   time.Duration(timeout) * time.Second,
-			Transport: transport,
-		},
-		recvCh: make(chan *JSONRPCMessage, 64),
+		server:     server,
+		timeout:    timeout,
+		httpClient: newHTTPClient(time.Duration(timeout)*time.Second, skipSSLVerify),
+		recvCh:     make(chan *JSONRPCMessage, 64),
 	}
 }
 

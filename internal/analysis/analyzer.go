@@ -3,6 +3,7 @@ package analysis
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,19 +20,17 @@ type Analyzer interface {
 }
 
 type remoteAnalyzer struct {
-	analysisURL   string
-	skipSSLVerify bool
-	httpClient    *http.Client
+	analysisURL string
+	httpClient  *http.Client
 }
 
 // NewAnalyzer creates a new remote analyzer.
 func NewAnalyzer(analysisURL string, skipSSLVerify bool) Analyzer {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.TLSClientConfig = &tls.Config{InsecureSkipVerify: skipSSLVerify} //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
 	return &remoteAnalyzer{
-		analysisURL:   analysisURL,
-		skipSSLVerify: skipSSLVerify,
-		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
-		},
+		analysisURL: analysisURL,
+		httpClient:  &http.Client{Timeout: 60 * time.Second, Transport: t},
 	}
 }
 

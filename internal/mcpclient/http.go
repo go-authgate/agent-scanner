@@ -24,18 +24,20 @@ type httpTransport struct {
 	sessionID  string
 }
 
+// newHTTPClient builds an http.Client with an optionally insecure TLS config.
+func newHTTPClient(timeout time.Duration, skipSSLVerify bool) *http.Client {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.TLSClientConfig = &tls.Config{InsecureSkipVerify: skipSSLVerify} //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+	return &http.Client{Timeout: timeout, Transport: t}
+}
+
 // NewHTTPTransport creates a transport using streamable HTTP.
 func NewHTTPTransport(server *models.RemoteServer, timeout int, skipSSLVerify bool) Transport {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: skipSSLVerify} //nolint:gosec
 	return &httpTransport{
-		server:  server,
-		timeout: timeout,
-		httpClient: &http.Client{
-			Timeout:   time.Duration(timeout*3) * time.Second,
-			Transport: transport,
-		},
-		recvCh: make(chan *JSONRPCMessage, 64),
+		server:     server,
+		timeout:    timeout,
+		httpClient: newHTTPClient(time.Duration(timeout*3)*time.Second, skipSSLVerify),
+		recvCh:     make(chan *JSONRPCMessage, 64),
 	}
 }
 
