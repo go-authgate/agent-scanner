@@ -95,7 +95,8 @@ func (r *BehaviorHijack) Check(ctx *RuleContext) []models.Issue {
 	var issues []models.Issue
 	for _, ie := range ctx.AllEntities() {
 		// Only check tools and prompts — resources don't carry behavioral instructions.
-		if ie.Entity.Kind() != models.EntityKindTool && ie.Entity.Kind() != models.EntityKindPrompt {
+		if ie.Entity.Kind() != models.EntityKindTool &&
+			ie.Entity.Kind() != models.EntityKindPrompt {
 			continue
 		}
 		desc := strings.ToLower(ie.Entity.GetDescription())
