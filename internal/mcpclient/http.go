@@ -18,6 +18,41 @@ import (
 	"github.com/go-authgate/agent-scanner/internal/models"
 )
 
+// defaultBaseTransport returns the base *http.Transport used when cloning for
+// TLS configuration. It falls back to a transport with Go's standard defaults
+// if http.DefaultTransport has been replaced. Tests may override this variable.
+var defaultBaseTransport = func() *http.Transport {
+	if base, ok := http.DefaultTransport.(*http.Transport); ok {
+		return base
+	}
+	// DefaultTransport was replaced with a non-*http.Transport; return a new one
+	// with Go's standard defaults (proxy, dialer timeouts, HTTP/2, etc.).
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		ForceAttemptHTTP2:     true,
+	}
+}
+
+// onceCloser wraps an io.ReadCloser and ensures Close is called at most once,
+// preventing double-close races when both a goroutine and Close() hold a reference.
+type onceCloser struct {
+	io.ReadCloser
+	once sync.Once
+}
+
+func (o *onceCloser) Close() error {
+	o.once.Do(func() { o.ReadCloser.Close() })
+	return nil
+}
+
 type httpTransport struct {
 	server     *models.RemoteServer
 	timeout    int
@@ -35,24 +70,7 @@ func newHTTPClient(timeout time.Duration, skipSSLVerify bool) *http.Client {
 	if !skipSSLVerify {
 		return &http.Client{Timeout: timeout}
 	}
-	base, ok := http.DefaultTransport.(*http.Transport)
-	if !ok {
-		// DefaultTransport has been replaced with a non-*http.Transport; construct
-		// a new one that preserves Go's standard defaults (proxy, dialer, timeouts).
-		base = &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			ForceAttemptHTTP2:     true,
-		}
-	}
-	t := base.Clone()
+	t := defaultBaseTransport().Clone()
 	if t.TLSClientConfig != nil {
 		cfg := t.TLSClientConfig.Clone()
 		cfg.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
@@ -122,15 +140,17 @@ func (t *httpTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 			resp.Body.Close()
 			return fmt.Errorf("HTTP send: status %d: %s", resp.StatusCode, string(body))
 		}
-		// Streaming response — track body under lock so Close() can stop it.
+		// Wrap in onceCloser so the goroutine's defer and Close() can both
+		// call Close() without racing on a double-close.
+		sc := &onceCloser{ReadCloser: resp.Body}
 		t.mu.Lock()
 		prev := t.streamBody
-		t.streamBody = resp.Body
+		t.streamBody = sc
 		t.mu.Unlock()
 		if prev != nil {
 			prev.Close()
 		}
-		go t.readStreamingResponse(resp.Body)
+		go t.readStreamingResponse(sc)
 		return nil
 	}
 

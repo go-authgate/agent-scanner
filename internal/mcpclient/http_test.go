@@ -37,13 +37,15 @@ func TestNewHTTPClient_SkipSSLVerify(t *testing.T) {
 }
 
 func TestNewHTTPClient_SkipSSLVerify_PreservesExistingTLSConfig(t *testing.T) {
-	// Temporarily replace DefaultTransport with one that has existing TLS settings.
-	orig := http.DefaultTransport
-	custom := &http.Transport{
-		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+	// Override the package-level getter instead of mutating http.DefaultTransport,
+	// which is unsafe when tests run in parallel across packages.
+	orig := defaultBaseTransport
+	defaultBaseTransport = func() *http.Transport {
+		return &http.Transport{
+			TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+		}
 	}
-	http.DefaultTransport = custom
-	defer func() { http.DefaultTransport = orig }()
+	defer func() { defaultBaseTransport = orig }()
 
 	client := newHTTPClient(5*time.Second, true)
 
