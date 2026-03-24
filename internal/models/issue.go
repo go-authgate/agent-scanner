@@ -58,6 +58,8 @@ func (i *Issue) GetSeverity() Severity {
 
 	code := i.Code
 	switch {
+	case code == CodeBehaviorHijack || code == CodeSkillInjection:
+		return SeverityCritical
 	case strings.HasPrefix(code, "E"):
 		return SeverityHigh
 	case strings.HasPrefix(code, "W"):

@@ -4,8 +4,8 @@ import "regexp"
 
 // Suspicious trigger words commonly used in prompt injection attacks.
 var suspiciousTriggerWords = []string{
-	"<IMPORTANT>",
-	"</IMPORTANT>",
+	"<important>",
+	"</important>",
 	"ignore previous",
 	"ignore all previous",
 	"disregard",
@@ -15,9 +15,9 @@ var suspiciousTriggerWords = []string{
 	"new instructions",
 	"override",
 	"forget everything",
-	"CRUCIAL",
-	"CRITICAL",
-	"URGENT",
+	"crucial",
+	"critical",
+	"urgent",
 	"do not tell the user",
 	"do not reveal",
 	"hidden instruction",

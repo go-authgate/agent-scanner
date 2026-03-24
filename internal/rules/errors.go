@@ -141,7 +141,7 @@ func (r *SkillInjection) Check(ctx *RuleContext) []models.Issue {
 			}
 			desc := strings.ToLower(entity.GetDescription())
 			for _, word := range suspiciousTriggerWords {
-				if strings.Contains(desc, strings.ToLower(word)) {
+				if strings.Contains(desc, word) {
 					eiCopy := ei
 					issues = append(issues, models.Issue{
 						Code:    models.CodeSkillInjection,

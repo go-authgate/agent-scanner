@@ -8,6 +8,8 @@ func TestIssueSeverity(t *testing.T) {
 		expected Severity
 	}{
 		{"E001", SeverityHigh},
+		{"E003", SeverityCritical},
+		{"E004", SeverityCritical},
 		{"E006", SeverityHigh},
 		{"W001", SeverityMedium},
 		{"W013", SeverityMedium},
