@@ -25,23 +25,25 @@ type httpTransport struct {
 	streamBody io.Closer
 }
 
-// newHTTPClient builds an http.Client with an optionally insecure TLS config.
-// It preserves any existing TLS settings on the cloned default transport.
+// newHTTPClient builds an http.Client. When skipSSLVerify is false the shared
+// default transport is used to maximise connection reuse. When true, the
+// default transport is cloned and TLS certificate verification is disabled.
 func newHTTPClient(timeout time.Duration, skipSSLVerify bool) *http.Client {
+	if !skipSSLVerify {
+		return &http.Client{Timeout: timeout}
+	}
 	base, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
 		base = &http.Transport{}
 	}
 	t := base.Clone()
-	if skipSSLVerify {
-		if t.TLSClientConfig != nil {
-			cfg := t.TLSClientConfig.Clone()
-			cfg.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
-			t.TLSClientConfig = cfg
-		} else {
-			t.TLSClientConfig = &tls.Config{
-				InsecureSkipVerify: true, //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
-			}
+	if t.TLSClientConfig != nil {
+		cfg := t.TLSClientConfig.Clone()
+		cfg.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+		t.TLSClientConfig = cfg
+	} else {
+		t.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
 		}
 	}
 	return &http.Client{Timeout: timeout, Transport: t}
@@ -99,6 +101,11 @@ func (t *httpTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 	contentType := resp.Header.Get("Content-Type")
 
 	if strings.Contains(contentType, "text/event-stream") {
+		if resp.StatusCode >= 400 {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			return fmt.Errorf("HTTP send: status %d: %s", resp.StatusCode, string(body))
+		}
 		// Streaming response — track body so Close() can stop the goroutine.
 		t.streamBody = resp.Body
 		go t.readStreamingResponse(resp.Body)
