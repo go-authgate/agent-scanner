@@ -28,11 +28,16 @@ type httpTransport struct {
 // It preserves any existing TLS settings on the cloned default transport.
 func newHTTPClient(timeout time.Duration, skipSSLVerify bool) *http.Client {
 	t := http.DefaultTransport.(*http.Transport).Clone()
-	if t.TLSClientConfig == nil {
-		t.TLSClientConfig = &tls.Config{} //nolint:gosec // empty config, InsecureSkipVerify set below only when flag is true
-	}
 	if skipSSLVerify {
-		t.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+		if t.TLSClientConfig != nil {
+			cfg := t.TLSClientConfig.Clone()
+			cfg.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+			t.TLSClientConfig = cfg
+		} else {
+			t.TLSClientConfig = &tls.Config{
+				InsecureSkipVerify: true, //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+			}
+		}
 	}
 	return &http.Client{Timeout: timeout, Transport: t}
 }

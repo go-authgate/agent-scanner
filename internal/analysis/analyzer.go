@@ -27,9 +27,17 @@ type remoteAnalyzer struct {
 // NewAnalyzer creates a new remote analyzer.
 func NewAnalyzer(analysisURL string, skipSSLVerify bool) Analyzer {
 	t := http.DefaultTransport.(*http.Transport).Clone()
-	t.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: skipSSLVerify,
-	} //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+	if skipSSLVerify {
+		if t.TLSClientConfig != nil {
+			cfg := t.TLSClientConfig.Clone()
+			cfg.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+			t.TLSClientConfig = cfg
+		} else {
+			t.TLSClientConfig = &tls.Config{
+				InsecureSkipVerify: true, //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+			}
+		}
+	}
 	return &remoteAnalyzer{
 		analysisURL: analysisURL,
 		httpClient:  &http.Client{Timeout: 60 * time.Second, Transport: t},
