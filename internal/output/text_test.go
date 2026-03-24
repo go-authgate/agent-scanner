@@ -55,15 +55,36 @@ func TestFormatResults_EntityIssuesDisplayed(t *testing.T) {
 
 	output := buf.String()
 
-	if !strings.Contains(output, "[E003] Behavior hijack detected") {
-		t.Error("expected E003 issue to appear in output")
+	serverPos := strings.Index(output, "test-server")
+	if serverPos == -1 {
+		t.Fatal("expected server name 'test-server' in output")
 	}
-	if !strings.Contains(output, "[W001] Suspicious trigger words") {
-		t.Error("expected W001 warning to appear in output")
+
+	e003Pos := strings.Index(output, "[E003] Behavior hijack detected")
+	if e003Pos == -1 {
+		t.Fatal("expected E003 issue to appear in output")
 	}
-	if !strings.Contains(output, "1 issue(s) found") {
-		t.Error("expected issue count in summary")
+
+	w001Pos := strings.Index(output, "[W001] Suspicious trigger words")
+	if w001Pos == -1 {
+		t.Fatal("expected W001 warning to appear in output")
 	}
+
+	// Entity issues must appear after their server header
+	if serverPos >= e003Pos || serverPos >= w001Pos {
+		t.Errorf("expected issues after server header; server=%d, E003=%d, W001=%d",
+			serverPos, e003Pos, w001Pos)
+	}
+
+	// Issues must appear before the summary
+	summaryPos := strings.Index(output, "1 issue(s) found")
+	if summaryPos == -1 {
+		t.Fatal("expected issue count in summary")
+	}
+	if e003Pos >= summaryPos {
+		t.Errorf("expected E003 before summary; E003=%d, summary=%d", e003Pos, summaryPos)
+	}
+
 	if !strings.Contains(output, "1 warning(s)") {
 		t.Error("expected warning count in summary")
 	}
