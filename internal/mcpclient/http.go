@@ -46,11 +46,12 @@ var defaultBaseTransport = func() *http.Transport {
 type onceCloser struct {
 	io.ReadCloser
 	once sync.Once
+	err  error
 }
 
 func (o *onceCloser) Close() error {
-	o.once.Do(func() { o.ReadCloser.Close() })
-	return nil
+	o.once.Do(func() { o.err = o.ReadCloser.Close() })
+	return o.err
 }
 
 type httpTransport struct {
