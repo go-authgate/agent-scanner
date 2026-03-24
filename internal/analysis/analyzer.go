@@ -179,10 +179,27 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 	if httpResp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(httpResp.Body)
 		if httpResp.StatusCode < 500 {
-			return &clientError{StatusCode: httpResp.StatusCode, Body: string(respBody)}
+			msg := statusMessage(httpResp.StatusCode, string(respBody))
+			return &clientError{StatusCode: httpResp.StatusCode, Body: msg}
 		}
-		return fmt.Errorf("status %d: %s", httpResp.StatusCode, string(respBody))
+		return fmt.Errorf("analysis server unreachable (status %d)", httpResp.StatusCode)
 	}
 
 	return json.NewDecoder(httpResp.Body).Decode(resp)
+}
+
+// statusMessage returns a user-friendly message for common HTTP status codes.
+func statusMessage(code int, body string) string {
+	switch code {
+	case http.StatusUnauthorized:
+		return "unauthorized – check your API credentials"
+	case http.StatusForbidden:
+		return "forbidden – insufficient permissions"
+	case http.StatusRequestEntityTooLarge:
+		return "payload too large – server has too many entities"
+	case http.StatusTooManyRequests:
+		return "rate limited – please try again later"
+	default:
+		return fmt.Sprintf("client error %d: %s", code, body)
+	}
 }

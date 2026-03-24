@@ -2,73 +2,82 @@ package mcpclient
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
+	"time"
 )
 
-// TrafficCapture records MCP protocol messages for debugging.
-type TrafficCapture struct {
+// CapturedMessage represents a captured JSON-RPC message.
+type CapturedMessage struct {
+	Direction string          // "sent" or "received"
+	Timestamp time.Time       // when the message was captured
+	Message   *JSONRPCMessage // the captured message
+}
+
+// CaptureTransport wraps a Transport and records all sent/received messages.
+type CaptureTransport struct {
+	inner    Transport
+	messages []CapturedMessage
 	mu       sync.Mutex
-	Sent     []json.RawMessage
-	Received []json.RawMessage
-	Stderr   []string
 }
 
-// NewTrafficCapture creates a new traffic capture.
-func NewTrafficCapture() *TrafficCapture {
-	return &TrafficCapture{}
+// NewCaptureTransport wraps an existing transport with message capture.
+func NewCaptureTransport(inner Transport) *CaptureTransport {
+	return &CaptureTransport{
+		inner: inner,
+	}
 }
 
-// RecordSent records an outbound message.
-func (tc *TrafficCapture) RecordSent(msg *JSONRPCMessage) {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
-	data, _ := json.Marshal(msg)
-	tc.Sent = append(tc.Sent, data)
-}
-
-// RecordReceived records an inbound message.
-func (tc *TrafficCapture) RecordReceived(msg *JSONRPCMessage) {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
-	data, _ := json.Marshal(msg)
-	tc.Received = append(tc.Received, data)
-}
-
-// capturingTransport wraps a transport to capture traffic.
-type capturingTransport struct {
-	inner   Transport
-	capture *TrafficCapture
-}
-
-// NewCapturingTransport wraps a transport with traffic capture.
-func NewCapturingTransport(inner Transport, capture *TrafficCapture) Transport {
-	return &capturingTransport{inner: inner, capture: capture}
-}
-
-func (t *capturingTransport) Connect(ctx context.Context) error {
+// Connect delegates to the inner transport.
+func (t *CaptureTransport) Connect(ctx context.Context) error {
 	return t.inner.Connect(ctx)
 }
 
-func (t *capturingTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
-	t.capture.RecordSent(msg)
+// Send captures the message then delegates to the inner transport.
+func (t *CaptureTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
+	t.mu.Lock()
+	t.messages = append(t.messages, CapturedMessage{
+		Direction: "sent",
+		Timestamp: time.Now(),
+		Message:   msg,
+	})
+	t.mu.Unlock()
+
 	return t.inner.Send(ctx, msg)
 }
 
-func (t *capturingTransport) Receive() <-chan *JSONRPCMessage {
-	// Wrap the receive channel to capture messages
+// Receive returns a channel that captures messages as they arrive.
+// It wraps the inner transport's receive channel with a goroutine that
+// records each message before forwarding it.
+func (t *CaptureTransport) Receive() <-chan *JSONRPCMessage {
 	innerCh := t.inner.Receive()
 	wrappedCh := make(chan *JSONRPCMessage, 64)
 	go func() {
 		defer close(wrappedCh)
 		for msg := range innerCh {
-			t.capture.RecordReceived(msg)
+			t.mu.Lock()
+			t.messages = append(t.messages, CapturedMessage{
+				Direction: "received",
+				Timestamp: time.Now(),
+				Message:   msg,
+			})
+			t.mu.Unlock()
 			wrappedCh <- msg
 		}
 	}()
 	return wrappedCh
 }
 
-func (t *capturingTransport) Close() error {
+// Close delegates to the inner transport.
+func (t *CaptureTransport) Close() error {
 	return t.inner.Close()
+}
+
+// Messages returns a copy of all captured messages.
+func (t *CaptureTransport) Messages() []CapturedMessage {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	cp := make([]CapturedMessage, len(t.messages))
+	copy(cp, t.messages)
+	return cp
 }
