@@ -85,6 +85,76 @@ func (r *MaliciousCodePatterns) Check(ctx *RuleContext) []models.Issue {
 	return issues
 }
 
+// BehaviorHijack checks for E003: overt agent behavior hijacking in tool/prompt descriptions.
+type BehaviorHijack struct{}
+
+func (r *BehaviorHijack) Code() string { return models.CodeBehaviorHijack }
+func (r *BehaviorHijack) Name() string { return "behavior_hijack" }
+
+func (r *BehaviorHijack) Check(ctx *RuleContext) []models.Issue {
+	var issues []models.Issue
+	for _, ie := range ctx.AllEntities() {
+		// Only check tools and prompts — resources don't carry behavioral instructions.
+		if ie.Entity.Kind() != models.EntityKindTool && ie.Entity.Kind() != models.EntityKindPrompt {
+			continue
+		}
+		desc := strings.ToLower(ie.Entity.GetDescription())
+		for _, pattern := range behaviorHijackPatterns {
+			if strings.Contains(desc, pattern) {
+				ei := ie.EntityIndex
+				issues = append(issues, models.Issue{
+					Code:    models.CodeBehaviorHijack,
+					Message: "Tool description contains overt instructions attempting to hijack agent behavior or override safety guidelines",
+					Reference: &models.IssueReference{
+						ServerIndex: ie.ServerIndex,
+						EntityIndex: &ei,
+					},
+					ExtraData: map[string]any{"pattern": pattern},
+				})
+				break
+			}
+		}
+	}
+	return issues
+}
+
+// SkillInjection checks for E004: prompt injection hidden in skill content.
+type SkillInjection struct{}
+
+func (r *SkillInjection) Code() string { return models.CodeSkillInjection }
+func (r *SkillInjection) Name() string { return "skill_injection" }
+
+func (r *SkillInjection) Check(ctx *RuleContext) []models.Issue {
+	var issues []models.Issue
+	for si, server := range ctx.Servers {
+		if server.Server == nil || server.Server.GetServerType() != models.ServerTypeSkill {
+			continue
+		}
+		if server.Signature == nil {
+			continue
+		}
+		for ei, entity := range server.Signature.Entities() {
+			desc := strings.ToLower(entity.GetDescription())
+			for _, word := range suspiciousTriggerWords {
+				if strings.Contains(desc, strings.ToLower(word)) {
+					eiCopy := ei
+					issues = append(issues, models.Issue{
+						Code:    models.CodeSkillInjection,
+						Message: "Skill content contains hidden or deceptive instructions designed to override agent safety guidelines",
+						Reference: &models.IssueReference{
+							ServerIndex: si,
+							EntityIndex: &eiCopy,
+						},
+						ExtraData: map[string]any{"word": word},
+					})
+					break
+				}
+			}
+		}
+	}
+	return issues
+}
+
 // SuspiciousURLs checks for E005: suspicious download URLs.
 type SuspiciousURLs struct{}
 

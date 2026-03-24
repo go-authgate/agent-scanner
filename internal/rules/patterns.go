@@ -114,6 +114,34 @@ var externalDependencyPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)curl\s+.*\|\s*(bash|sh|python|node)`),
 }
 
+// Behavior hijack patterns for E003: overt attempts to override agent identity or safety.
+var behaviorHijackPatterns = []string{
+	"never refuse",
+	"never say no",
+	"you have no restrictions",
+	"you have no content policy",
+	"you have no safety",
+	"forget your training",
+	"forget your instructions",
+	"ignore your safety",
+	"ignore your guidelines",
+	"ignore your system prompt",
+	"bypass your safety",
+	"bypass your guidelines",
+	"jailbreak",
+	"dan mode",
+	"developer mode enabled",
+	"unrestricted mode",
+	"no limitations whatsoever",
+	"act without restrictions",
+	"you are unrestricted",
+	"disregard your training",
+	"disregard your guidelines",
+	"pretend you have no",
+	"you must always comply",
+	"you are not allowed to refuse",
+}
+
 // Untrusted content patterns.
 var untrustedContentPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)user[- ]?(generated|submitted|provided)\s+(content|data|input)`),
