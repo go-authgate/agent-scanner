@@ -25,42 +25,50 @@ type remoteAnalyzer struct {
 	httpClient  *http.Client
 }
 
+// newAnalyzerTransport returns an http.RoundTripper with TLS verification
+// disabled when skipSSLVerify is true, and nil (shared default) otherwise.
+func newAnalyzerTransport(skipSSLVerify bool) http.RoundTripper {
+	if !skipSSLVerify {
+		return nil
+	}
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		// DefaultTransport has been replaced with a non-*http.Transport; construct
+		// a new one that preserves Go's standard defaults (proxy, dialer, timeouts).
+		base = &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			ForceAttemptHTTP2:     true,
+		}
+	}
+	t := base.Clone()
+	if t.TLSClientConfig != nil {
+		cfg := t.TLSClientConfig.Clone()
+		cfg.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+		t.TLSClientConfig = cfg
+	} else {
+		t.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
+		}
+	}
+	return t
+}
+
 // NewAnalyzer creates a new remote analyzer.
 func NewAnalyzer(analysisURL string, skipSSLVerify bool) Analyzer {
-	var transport http.RoundTripper
-	if skipSSLVerify {
-		base, ok := http.DefaultTransport.(*http.Transport)
-		if !ok {
-			// DefaultTransport has been replaced with a non-*http.Transport; construct
-			// a new one that preserves Go's standard defaults (proxy, dialer, timeouts).
-			base = &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}).DialContext,
-				MaxIdleConns:          100,
-				IdleConnTimeout:       90 * time.Second,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ExpectContinueTimeout: 1 * time.Second,
-				ForceAttemptHTTP2:     true,
-			}
-		}
-		t := base.Clone()
-		if t.TLSClientConfig != nil {
-			cfg := t.TLSClientConfig.Clone()
-			cfg.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
-			t.TLSClientConfig = cfg
-		} else {
-			t.TLSClientConfig = &tls.Config{
-				InsecureSkipVerify: true, //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
-			}
-		}
-		transport = t
-	}
 	return &remoteAnalyzer{
 		analysisURL: analysisURL,
-		httpClient:  &http.Client{Timeout: 60 * time.Second, Transport: transport},
+		httpClient: &http.Client{
+			Timeout:   60 * time.Second,
+			Transport: newAnalyzerTransport(skipSSLVerify),
+		},
 	}
 }
 
