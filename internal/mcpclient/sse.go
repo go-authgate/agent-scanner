@@ -26,14 +26,12 @@ type sseTransport struct {
 }
 
 // NewSSETransport creates a transport that uses Server-Sent Events.
-func NewSSETransport(server *models.RemoteServer, timeout int) Transport {
+func NewSSETransport(server *models.RemoteServer, timeout int, skipSSLVerify bool) Transport {
 	return &sseTransport{
-		server:  server,
-		timeout: timeout,
-		httpClient: &http.Client{
-			Timeout: time.Duration(timeout) * time.Second,
-		},
-		recvCh: make(chan *JSONRPCMessage, 64),
+		server:     server,
+		timeout:    timeout,
+		httpClient: newHTTPClient(time.Duration(timeout)*time.Second, skipSSLVerify),
+		recvCh:     make(chan *JSONRPCMessage, 64),
 	}
 }
 
@@ -168,6 +166,9 @@ func (t *sseTransport) Receive() <-chan *JSONRPCMessage {
 func (t *sseTransport) Close() error {
 	if t.cancel != nil {
 		t.cancel()
+	}
+	if tr, ok := t.httpClient.Transport.(*http.Transport); ok {
+		tr.CloseIdleConnections()
 	}
 	return nil
 }

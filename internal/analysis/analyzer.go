@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
+	"github.com/go-authgate/agent-scanner/internal/tlsutil"
 )
 
 // Analyzer performs security analysis on scan results.
@@ -19,18 +20,28 @@ type Analyzer interface {
 }
 
 type remoteAnalyzer struct {
-	analysisURL   string
-	skipSSLVerify bool
-	httpClient    *http.Client
+	analysisURL string
+	httpClient  *http.Client
+}
+
+// newAnalyzerTransport returns an http.RoundTripper with TLS verification
+// disabled when skipSSLVerify is true, and nil (shared default) otherwise.
+func newAnalyzerTransport(skipSSLVerify bool) http.RoundTripper {
+	if !skipSSLVerify {
+		return nil
+	}
+	t := tlsutil.CloneTransport()
+	tlsutil.ApplyInsecureSkipVerify(t)
+	return t
 }
 
 // NewAnalyzer creates a new remote analyzer.
 func NewAnalyzer(analysisURL string, skipSSLVerify bool) Analyzer {
 	return &remoteAnalyzer{
-		analysisURL:   analysisURL,
-		skipSSLVerify: skipSSLVerify,
+		analysisURL: analysisURL,
 		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout:   60 * time.Second,
+			Transport: newAnalyzerTransport(skipSSLVerify),
 		},
 	}
 }
