@@ -38,8 +38,8 @@ func TestNewHTTPClient_SkipSSLVerify(t *testing.T) {
 	}
 }
 
-// TestNewHTTPTransport_SkipSSLVerify verifies that skipSSLVerify flows from
-// NewClient → client.Connect → NewHTTPTransport → httpClient TLS config.
+// TestNewHTTPTransport_SkipSSLVerify verifies that NewHTTPTransport correctly
+// configures the httpClient TLS transport based on the skipSSLVerify flag.
 func TestNewHTTPTransport_SkipSSLVerify(t *testing.T) {
 	server := &models.RemoteServer{URL: "http://localhost:9999"}
 
@@ -60,7 +60,8 @@ func TestNewHTTPTransport_SkipSSLVerify(t *testing.T) {
 	}
 }
 
-// TestNewSSETransport_SkipSSLVerify verifies the same for the SSE transport.
+// TestNewSSETransport_SkipSSLVerify verifies that NewSSETransport correctly
+// configures the httpClient TLS transport based on the skipSSLVerify flag.
 func TestNewSSETransport_SkipSSLVerify(t *testing.T) {
 	server := &models.RemoteServer{URL: "http://localhost:9999", Type: models.ServerTypeSSE}
 
