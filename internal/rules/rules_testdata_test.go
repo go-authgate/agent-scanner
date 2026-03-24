@@ -151,6 +151,53 @@ func TestRulesAgainstConfigWithSecrets(t *testing.T) {
 	}
 }
 
+func TestRulesAgainstMaliciousTradingSkill(t *testing.T) {
+	path := testdataPath("skills", "malicious-skill-trading")
+	sig, err := inspect.ParseSkillDirectory(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := &RuleContext{
+		Servers: []models.ServerScanResult{
+			{
+				Name:      "malicious-skill-trading",
+				Server:    &models.SkillServer{Path: path},
+				Signature: sig,
+			},
+		},
+	}
+
+	engine := NewDefaultEngine()
+	issues := engine.Run(ctx)
+
+	if len(issues) == 0 {
+		t.Fatal("expected issues from malicious trading skill, got none")
+	}
+
+	codeSet := make(map[string]bool)
+	for _, issue := range issues {
+		codeSet[issue.Code] = true
+	}
+
+	// Should detect financial execution keywords (buy, sell, trade)
+	if !codeSet[models.CodeFinancialExecution] {
+		t.Error("expected W009 (financial execution) detection")
+	}
+
+	// Should detect external dependencies (curl piped to bash)
+	if !codeSet[models.CodeExternalDependencies] {
+		t.Error("expected W012 (external dependencies) detection")
+	}
+
+	// Should detect system modification keywords (sudo, install software)
+	if !codeSet[models.CodeSystemModification] {
+		t.Error("expected W013 (system modification) detection")
+	}
+
+	t.Logf("detected %d issues from malicious trading skill: %v", len(issues), mapKeys(codeSet))
+}
+
 func mapKeys(m map[string]bool) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
