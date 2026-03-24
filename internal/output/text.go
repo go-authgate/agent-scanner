@@ -133,22 +133,22 @@ func (f *textFormatter) formatEntity(entity models.Entity, opts FormatOptions) {
 	fmt.Fprintf(f.writer, "    %s %s: %s\n", kind, entity.GetName(), desc)
 }
 
-func (f *textFormatter) formatEntityIssue(issue models.Issue) {
+func (f *textFormatter) formatScopedIssue(issue models.Issue, indent string) {
 	severity := issue.GetSeverity()
 	icon := severityIcon(severity)
-	fmt.Fprintf(f.writer, "    %s [%s] %s\n", icon, issue.Code, issue.Message)
+	fmt.Fprintf(f.writer, "%s%s [%s] %s\n", indent, icon, issue.Code, issue.Message)
+}
+
+func (f *textFormatter) formatEntityIssue(issue models.Issue) {
+	f.formatScopedIssue(issue, "    ")
 }
 
 func (f *textFormatter) formatServerIssue(issue models.Issue) {
-	severity := issue.GetSeverity()
-	icon := severityIcon(severity)
-	fmt.Fprintf(f.writer, "    %s [%s] %s\n", icon, issue.Code, issue.Message)
+	f.formatScopedIssue(issue, "    ")
 }
 
 func (f *textFormatter) formatGlobalIssue(issue models.Issue) {
-	severity := issue.GetSeverity()
-	icon := severityIcon(severity)
-	fmt.Fprintf(f.writer, "  %s [%s] %s\n", icon, issue.Code, issue.Message)
+	f.formatScopedIssue(issue, "  ")
 }
 
 func (f *textFormatter) printSummary(results []models.ScanPathResult) {
