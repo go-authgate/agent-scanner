@@ -104,7 +104,7 @@ func (r *BehaviorHijack) Check(ctx *RuleContext) []models.Issue {
 				ei := ie.EntityIndex
 				issues = append(issues, models.Issue{
 					Code:    models.CodeBehaviorHijack,
-					Message: "Tool description contains overt instructions attempting to hijack agent behavior or override safety guidelines",
+					Message: "Entity description contains overt instructions attempting to hijack agent behavior or override safety guidelines",
 					Reference: &models.IssueReference{
 						ServerIndex: ie.ServerIndex,
 						EntityIndex: &ei,
