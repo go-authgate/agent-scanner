@@ -22,12 +22,17 @@ type httpTransport struct {
 	httpClient *http.Client
 	recvCh     chan *JSONRPCMessage
 	sessionID  string
+	streamBody io.Closer
 }
 
 // newHTTPClient builds an http.Client with an optionally insecure TLS config.
 // It preserves any existing TLS settings on the cloned default transport.
 func newHTTPClient(timeout time.Duration, skipSSLVerify bool) *http.Client {
-	t := http.DefaultTransport.(*http.Transport).Clone()
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		base = &http.Transport{}
+	}
+	t := base.Clone()
 	if skipSSLVerify {
 		if t.TLSClientConfig != nil {
 			cfg := t.TLSClientConfig.Clone()
@@ -94,7 +99,8 @@ func (t *httpTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 	contentType := resp.Header.Get("Content-Type")
 
 	if strings.Contains(contentType, "text/event-stream") {
-		// Streaming response — read SSE events
+		// Streaming response — track body so Close() can stop the goroutine.
+		t.streamBody = resp.Body
 		go t.readStreamingResponse(resp.Body)
 		return nil
 	}
@@ -160,6 +166,9 @@ func (t *httpTransport) Receive() <-chan *JSONRPCMessage {
 }
 
 func (t *httpTransport) Close() error {
+	if t.streamBody != nil {
+		t.streamBody.Close()
+	}
 	if tr, ok := t.httpClient.Transport.(*http.Transport); ok {
 		tr.CloseIdleConnections()
 	}

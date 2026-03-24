@@ -26,7 +26,11 @@ type remoteAnalyzer struct {
 
 // NewAnalyzer creates a new remote analyzer.
 func NewAnalyzer(analysisURL string, skipSSLVerify bool) Analyzer {
-	t := http.DefaultTransport.(*http.Transport).Clone()
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		base = &http.Transport{}
+	}
+	t := base.Clone()
 	if skipSSLVerify {
 		if t.TLSClientConfig != nil {
 			cfg := t.TLSClientConfig.Clone()
