@@ -1,0 +1,267 @@
+package upload
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/go-authgate/agent-scanner/internal/models"
+)
+
+func TestUpload_Success(t *testing.T) {
+	var receivedBody models.ScanPathResultsCreate
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if ct := r.Header.Get("Content-Type"); ct != "application/json" {
+			t.Errorf("expected Content-Type application/json, got %s", ct)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&receivedBody); err != nil {
+			t.Errorf("failed to decode request body: %v", err)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	u := NewUploader()
+	results := []models.ScanPathResult{
+		{
+			Client: "test-client",
+			Path:   "/test/path",
+			Issues: []models.Issue{
+				{Code: "E001", Message: "test issue"},
+			},
+		},
+	}
+	server := models.ControlServer{
+		URL:        ts.URL,
+		Identifier: "test-id",
+	}
+
+	err := u.Upload(context.Background(), results, server)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(receivedBody.ScanPathResults) != 1 {
+		t.Fatalf("expected 1 scan path result, got %d", len(receivedBody.ScanPathResults))
+	}
+	if receivedBody.ScanPathResults[0].Client != "test-client" {
+		t.Errorf("expected client 'test-client', got %q", receivedBody.ScanPathResults[0].Client)
+	}
+	if receivedBody.ScanUserInfo.Hostname == "" {
+		t.Error("expected non-empty hostname")
+	}
+	if receivedBody.ScanUserInfo.Username == "" {
+		t.Error("expected non-empty username")
+	}
+}
+
+func TestUpload_EmptyResults(t *testing.T) {
+	requestMade := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestMade = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	u := NewUploader()
+	server := models.ControlServer{URL: ts.URL}
+
+	err := u.Upload(context.Background(), nil, server)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if requestMade {
+		t.Error("expected no HTTP request for empty results")
+	}
+
+	err = u.Upload(context.Background(), []models.ScanPathResult{}, server)
+	if err != nil {
+		t.Fatalf("expected nil error for empty slice, got %v", err)
+	}
+	if requestMade {
+		t.Error("expected no HTTP request for empty slice")
+	}
+}
+
+func TestUpload_4xxNoRetry(t *testing.T) {
+	var requestCount atomic.Int32
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("bad request"))
+	}))
+	defer ts.Close()
+
+	u := NewUploader()
+	results := []models.ScanPathResult{
+		{Client: "test", Path: "/p"},
+	}
+	server := models.ControlServer{URL: ts.URL}
+
+	err := u.Upload(context.Background(), results, server)
+	if err == nil {
+		t.Fatal("expected error for 400 response")
+	}
+
+	count := requestCount.Load()
+	if count != 1 {
+		t.Errorf("expected exactly 1 request (no retry on 4xx), got %d", count)
+	}
+
+	// Verify it's a clientError
+	var ce *clientError
+	if !containsClientError(err) {
+		t.Errorf("expected clientError in chain, got %T: %v", err, err)
+	}
+	_ = ce
+}
+
+func TestUpload_5xxRetries(t *testing.T) {
+	var requestCount atomic.Int32
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("server error"))
+	}))
+	defer ts.Close()
+
+	u := NewUploader()
+	results := []models.ScanPathResult{
+		{Client: "test", Path: "/p"},
+	}
+	server := models.ControlServer{URL: ts.URL}
+
+	// Use a context with a short deadline to avoid waiting for full backoff.
+	// The first request is immediate, then backoff is 1s, 2s.
+	// With a 1500ms deadline, we should get at least 2 attempts.
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+
+	err := u.Upload(ctx, results, server)
+	if err == nil {
+		t.Fatal("expected error for 500 response")
+	}
+
+	count := requestCount.Load()
+	if count < 2 {
+		t.Errorf("expected at least 2 requests (retries on 5xx), got %d", count)
+	}
+}
+
+func TestUpload_CustomHeaders(t *testing.T) {
+	var receivedHeaders http.Header
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedHeaders = r.Header.Clone()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	u := NewUploader()
+	results := []models.ScanPathResult{
+		{Client: "test", Path: "/p"},
+	}
+	server := models.ControlServer{
+		URL: ts.URL,
+		Headers: map[string]string{
+			"Authorization": "Bearer test-token",
+			"X-Custom":      "custom-value",
+		},
+	}
+
+	err := u.Upload(context.Background(), results, server)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedHeaders.Get("Authorization") != "Bearer test-token" {
+		t.Errorf(
+			"expected Authorization header 'Bearer test-token', got %q",
+			receivedHeaders.Get("Authorization"),
+		)
+	}
+	if receivedHeaders.Get("X-Custom") != "custom-value" {
+		t.Errorf("expected X-Custom header 'custom-value', got %q", receivedHeaders.Get("X-Custom"))
+	}
+}
+
+func TestUpload_ScanMetadataVersionPopulated(t *testing.T) {
+	var receivedBody models.ScanPathResultsCreate
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&receivedBody); err != nil {
+			t.Errorf("failed to decode request body: %v", err)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	u := NewUploader()
+	results := []models.ScanPathResult{
+		{Client: "test", Path: "/p"},
+	}
+	server := models.ControlServer{URL: ts.URL}
+
+	err := u.Upload(context.Background(), results, server)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedBody.ScanMetadata == nil {
+		t.Fatal("expected ScanMetadata to be non-nil")
+	}
+	if receivedBody.ScanMetadata.Version == "" {
+		t.Error("expected ScanMetadata.Version to be populated")
+	}
+}
+
+func TestUpload_ContextCancellation(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Simulate a slow server by sleeping longer than the context deadline
+		time.Sleep(2 * time.Second)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	u := NewUploader()
+	results := []models.ScanPathResult{
+		{Client: "test", Path: "/p"},
+	}
+	server := models.ControlServer{URL: ts.URL}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	err := u.Upload(ctx, results, server)
+	if err == nil {
+		t.Fatal("expected error due to context cancellation")
+	}
+}
+
+// containsClientError checks if the error chain contains a *clientError.
+func containsClientError(err error) bool {
+	var ce *clientError
+	for e := err; e != nil; {
+		if _, ok := e.(*clientError); ok {
+			return true
+		}
+		// Check using errors.As which unwraps
+		if unwrapper, ok := e.(interface{ Unwrap() error }); ok {
+			e = unwrapper.Unwrap()
+		} else {
+			break
+		}
+	}
+	_ = ce
+	return false
+}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,6 +14,16 @@ import (
 	"github.com/go-authgate/agent-scanner/internal/models"
 	"github.com/go-authgate/agent-scanner/internal/tlsutil"
 )
+
+// clientError is a non-retryable HTTP error (4xx).
+type clientError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *clientError) Error() string {
+	return fmt.Sprintf("status %d: %s", e.StatusCode, e.Body)
+}
 
 // Analyzer performs security analysis on scan results.
 type Analyzer interface {
@@ -113,13 +124,18 @@ func (a *remoteAnalyzer) analyzePathResult(
 		return fmt.Errorf("marshal request: %w", err)
 	}
 
-	// Retry with exponential backoff
+	// Retry with exponential backoff (only retry on 5xx / network errors)
 	var resp analysisResponse
 	maxRetries := 3
 	for attempt := range maxRetries {
 		err = a.doRequest(ctx, body, &resp)
 		if err == nil {
 			break
+		}
+		// Do not retry client errors (4xx)
+		var ce *clientError
+		if errors.As(err, &ce) {
+			return fmt.Errorf("analysis API: %w", err)
 		}
 		if attempt < maxRetries-1 {
 			backoff := time.Duration(1<<uint(attempt)) * time.Second
@@ -162,6 +178,9 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 
 	if httpResp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(httpResp.Body)
+		if httpResp.StatusCode < 500 {
+			return &clientError{StatusCode: httpResp.StatusCode, Body: string(respBody)}
+		}
 		return fmt.Errorf("status %d: %s", httpResp.StatusCode, string(respBody))
 	}
 

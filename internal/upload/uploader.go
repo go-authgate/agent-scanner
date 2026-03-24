@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -14,7 +15,18 @@ import (
 
 	"github.com/go-authgate/agent-scanner/internal/models"
 	"github.com/go-authgate/agent-scanner/internal/redact"
+	"github.com/go-authgate/agent-scanner/internal/version"
 )
+
+// clientError is a non-retryable HTTP error (4xx).
+type clientError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *clientError) Error() string {
+	return fmt.Sprintf("status %d: %s", e.StatusCode, e.Body)
+}
 
 // Uploader pushes scan results to control servers.
 type Uploader interface {
@@ -56,6 +68,9 @@ func (u *uploader) Upload(
 			Hostname: getHostname(),
 			Username: getUsername(),
 		},
+		ScanMetadata: &models.ScanMetadata{
+			Version: version.Version,
+		},
 	}
 
 	body, err := json.Marshal(payload)
@@ -63,13 +78,18 @@ func (u *uploader) Upload(
 		return fmt.Errorf("marshal upload payload: %w", err)
 	}
 
-	// Retry with exponential backoff
+	// Retry with exponential backoff (only retry on 5xx / network errors)
 	maxRetries := 3
 	for attempt := range maxRetries {
 		err = u.doUpload(ctx, server, body)
 		if err == nil {
 			slog.Info("upload successful", "url", server.URL)
 			return nil
+		}
+		// Do not retry client errors (4xx)
+		var ce *clientError
+		if errors.As(err, &ce) {
+			return err
 		}
 		if attempt < maxRetries-1 {
 			backoff := time.Duration(1<<uint(attempt)) * time.Second
@@ -103,6 +123,9 @@ func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, bo
 
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode < 500 {
+			return &clientError{StatusCode: resp.StatusCode, Body: string(respBody)}
+		}
 		return fmt.Errorf("status %d: %s", resp.StatusCode, string(respBody))
 	}
 
