@@ -3,16 +3,15 @@ package analysis
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"time"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
+	"github.com/go-authgate/agent-scanner/internal/tlsutil"
 )
 
 // Analyzer performs security analysis on scan results.
@@ -31,33 +30,8 @@ func newAnalyzerTransport(skipSSLVerify bool) http.RoundTripper {
 	if !skipSSLVerify {
 		return nil
 	}
-	base, ok := http.DefaultTransport.(*http.Transport)
-	if !ok {
-		// DefaultTransport has been replaced with a non-*http.Transport; construct
-		// a new one that preserves Go's standard defaults (proxy, dialer, timeouts).
-		base = &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			ForceAttemptHTTP2:     true,
-		}
-	}
-	t := base.Clone()
-	if t.TLSClientConfig != nil {
-		cfg := t.TLSClientConfig.Clone()
-		cfg.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
-		t.TLSClientConfig = cfg
-	} else {
-		t.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
-		}
-	}
+	t := tlsutil.CloneTransport()
+	tlsutil.ApplyInsecureSkipVerify(t)
 	return t
 }
 

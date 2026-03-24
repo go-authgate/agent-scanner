@@ -4,42 +4,23 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
+	"github.com/go-authgate/agent-scanner/internal/tlsutil"
 )
 
-// defaultBaseTransport returns the base *http.Transport used when cloning for
-// TLS configuration. It falls back to a transport with Go's standard defaults
-// if http.DefaultTransport has been replaced. Tests may override this variable.
-var defaultBaseTransport = func() *http.Transport {
-	if base, ok := http.DefaultTransport.(*http.Transport); ok {
-		return base
-	}
-	// DefaultTransport was replaced with a non-*http.Transport; return a new one
-	// with Go's standard defaults (proxy, dialer timeouts, HTTP/2, etc.).
-	return &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		ForceAttemptHTTP2:     true,
-	}
-}
+// defaultBaseTransport returns the base *http.Transport for cloning. Tests may
+// override this variable to inject a custom transport without mutating the global
+// http.DefaultTransport.
+var defaultBaseTransport = tlsutil.CloneTransport
 
 // onceCloser wraps an io.ReadCloser and ensures Close is called at most once,
 // preventing double-close races when both a goroutine and Close() hold a reference.
@@ -71,16 +52,8 @@ func newHTTPClient(timeout time.Duration, skipSSLVerify bool) *http.Client {
 	if !skipSSLVerify {
 		return &http.Client{Timeout: timeout}
 	}
-	t := defaultBaseTransport().Clone()
-	if t.TLSClientConfig != nil {
-		cfg := t.TLSClientConfig.Clone()
-		cfg.InsecureSkipVerify = true //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
-		t.TLSClientConfig = cfg
-	} else {
-		t.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec // controlled by --skip-ssl-verify flag, user opt-in
-		}
-	}
+	t := defaultBaseTransport()
+	tlsutil.ApplyInsecureSkipVerify(t)
 	return &http.Client{Timeout: timeout, Transport: t}
 }
 
