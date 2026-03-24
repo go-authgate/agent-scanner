@@ -167,5 +167,8 @@ func (t *sseTransport) Close() error {
 	if t.cancel != nil {
 		t.cancel()
 	}
+	if tr, ok := t.httpClient.Transport.(*http.Transport); ok {
+		tr.CloseIdleConnections()
+	}
 	return nil
 }
