@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
@@ -23,6 +24,7 @@ type httpTransport struct {
 	httpClient *http.Client
 	recvCh     chan *JSONRPCMessage
 	sessionID  string
+	mu         sync.Mutex
 	streamBody io.Closer
 }
 
@@ -120,8 +122,14 @@ func (t *httpTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 			resp.Body.Close()
 			return fmt.Errorf("HTTP send: status %d: %s", resp.StatusCode, string(body))
 		}
-		// Streaming response — track body so Close() can stop the goroutine.
+		// Streaming response — track body under lock so Close() can stop it.
+		t.mu.Lock()
+		prev := t.streamBody
 		t.streamBody = resp.Body
+		t.mu.Unlock()
+		if prev != nil {
+			prev.Close()
+		}
 		go t.readStreamingResponse(resp.Body)
 		return nil
 	}
@@ -187,8 +195,12 @@ func (t *httpTransport) Receive() <-chan *JSONRPCMessage {
 }
 
 func (t *httpTransport) Close() error {
-	if t.streamBody != nil {
-		t.streamBody.Close()
+	t.mu.Lock()
+	body := t.streamBody
+	t.streamBody = nil
+	t.mu.Unlock()
+	if body != nil {
+		body.Close()
 	}
 	if tr, ok := t.httpClient.Transport.(*http.Transport); ok {
 		tr.CloseIdleConnections()
