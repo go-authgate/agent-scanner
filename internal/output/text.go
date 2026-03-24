@@ -107,10 +107,14 @@ func (f *textFormatter) formatServer(
 		f.formatEntity(entity, opts)
 	}
 
-	// Entity-level issues for this server
+	// Server-scoped issues (entity-level and server-level) for this server
 	for _, issue := range issues {
 		if issue.Reference != nil && issue.Reference.ServerIndex == serverIndex {
-			f.formatEntityIssue(issue)
+			if issue.Reference.EntityIndex != nil {
+				f.formatEntityIssue(issue)
+			} else {
+				f.formatServerIssue(issue)
+			}
 		}
 	}
 }
@@ -130,6 +134,12 @@ func (f *textFormatter) formatEntity(entity models.Entity, opts FormatOptions) {
 }
 
 func (f *textFormatter) formatEntityIssue(issue models.Issue) {
+	severity := issue.GetSeverity()
+	icon := severityIcon(severity)
+	fmt.Fprintf(f.writer, "    %s [%s] %s\n", icon, issue.Code, issue.Message)
+}
+
+func (f *textFormatter) formatServerIssue(issue models.Issue) {
 	severity := issue.GetSeverity()
 	icon := severityIcon(severity)
 	fmt.Fprintf(f.writer, "    %s [%s] %s\n", icon, issue.Code, issue.Message)

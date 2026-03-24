@@ -159,6 +159,51 @@ func TestFormatResults_MixedIssues(t *testing.T) {
 	}
 }
 
+func TestFormatResults_ServerLevelReferencedIssue(t *testing.T) {
+	results := []models.ScanPathResult{
+		{
+			Client: "test-client",
+			Path:   "/test/path",
+			Servers: []models.ServerScanResult{
+				{
+					Name: "big-server",
+					Signature: &models.ServerSignature{
+						Tools: []models.Tool{
+							{Name: "tool-a", Description: "Tool A"},
+						},
+					},
+				},
+			},
+			Issues: []models.Issue{
+				{
+					Code:    "W002",
+					Message: "Too many entities exposed by this server",
+					Reference: &models.IssueReference{
+						ServerIndex: 0,
+						EntityIndex: nil, // server-level, no specific entity
+					},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	f := NewTextFormatter(&buf)
+	err := f.FormatResults(results, FormatOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	output := buf.String()
+
+	if !strings.Contains(output, "[W002] Too many entities exposed by this server") {
+		t.Error("expected W002 server-level issue to appear in output")
+	}
+	if !strings.Contains(output, "1 warning(s)") {
+		t.Error("expected warning count in summary")
+	}
+}
+
 func TestFormatResults_NoIssues(t *testing.T) {
 	results := []models.ScanPathResult{
 		{
