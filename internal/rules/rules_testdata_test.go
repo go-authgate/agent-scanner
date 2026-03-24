@@ -67,6 +67,11 @@ func TestRulesAgainstMaliciousSkill(t *testing.T) {
 		t.Error("expected E006 (malicious code pattern) detection")
 	}
 
+	// Should detect prompt injection in skill content (E004)
+	if !codeSet[models.CodeSkillInjection] {
+		t.Error("expected E004 (skill injection) detection")
+	}
+
 	t.Logf("detected %d issues from malicious skill: %v", len(issues), mapKeys(codeSet))
 }
 
