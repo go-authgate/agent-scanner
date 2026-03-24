@@ -25,11 +25,13 @@ type Client interface {
 	Connect(ctx context.Context, cfg models.ServerConfig, timeout int) (Session, error)
 }
 
-type client struct{}
+type client struct {
+	skipSSLVerify bool
+}
 
 // NewClient creates a new MCP client.
-func NewClient() Client {
-	return &client{}
+func NewClient(skipSSLVerify bool) Client {
+	return &client{skipSSLVerify: skipSSLVerify}
 }
 
 func (c *client) Connect(
@@ -45,9 +47,9 @@ func (c *client) Connect(
 	case *models.RemoteServer:
 		switch srv.GetServerType() {
 		case models.ServerTypeSSE:
-			transport = NewSSETransport(srv, timeout)
+			transport = NewSSETransport(srv, timeout, c.skipSSLVerify)
 		default:
-			transport = NewHTTPTransport(srv, timeout)
+			transport = NewHTTPTransport(srv, timeout, c.skipSSLVerify)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported server type: %T", cfg)

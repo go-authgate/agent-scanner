@@ -40,7 +40,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	// Build pipeline components
 	discoverer := discovery.NewDiscoverer()
-	client := mcpclient.NewClient()
+	client := mcpclient.NewClient(commonFlags.SkipSSLVerify)
 	inspector := inspect.NewInspector(client, commonFlags.ServerTimeout)
 	ruleEngine := rules.NewDefaultEngine()
 	analyzer := analysis.NewAnalyzer(commonFlags.AnalysisURL, commonFlags.SkipSSLVerify)

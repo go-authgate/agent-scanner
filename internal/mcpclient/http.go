@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,12 +25,15 @@ type httpTransport struct {
 }
 
 // NewHTTPTransport creates a transport using streamable HTTP.
-func NewHTTPTransport(server *models.RemoteServer, timeout int) Transport {
+func NewHTTPTransport(server *models.RemoteServer, timeout int, skipSSLVerify bool) Transport {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: skipSSLVerify} //nolint:gosec
 	return &httpTransport{
 		server:  server,
 		timeout: timeout,
 		httpClient: &http.Client{
-			Timeout: time.Duration(timeout*3) * time.Second,
+			Timeout:   time.Duration(timeout*3) * time.Second,
+			Transport: transport,
 		},
 		recvCh: make(chan *JSONRPCMessage, 64),
 	}

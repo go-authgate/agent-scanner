@@ -37,7 +37,7 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	discoverer := discovery.NewDiscoverer()
-	client := mcpclient.NewClient()
+	client := mcpclient.NewClient(commonFlags.SkipSSLVerify)
 	inspector := inspect.NewInspector(client, commonFlags.ServerTimeout)
 
 	p := pipeline.New(pipeline.Config{
