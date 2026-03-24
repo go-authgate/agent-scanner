@@ -60,8 +60,8 @@ func (f *textFormatter) formatPathResult(result models.ScanPathResult, opts Form
 	}
 
 	// Servers
-	for _, server := range result.Servers {
-		f.formatServer(server, opts)
+	for si, server := range result.Servers {
+		f.formatServer(server, opts, result.Issues, si)
 	}
 
 	// Global issues (toxic flows, etc.)
@@ -72,7 +72,12 @@ func (f *textFormatter) formatPathResult(result models.ScanPathResult, opts Form
 	}
 }
 
-func (f *textFormatter) formatServer(server models.ServerScanResult, opts FormatOptions) {
+func (f *textFormatter) formatServer(
+	server models.ServerScanResult,
+	opts FormatOptions,
+	issues []models.Issue,
+	serverIndex int,
+) {
 	name := server.Name
 	if name == "" {
 		name = "(unnamed)"
@@ -101,6 +106,13 @@ func (f *textFormatter) formatServer(server models.ServerScanResult, opts Format
 	for _, entity := range server.Signature.Entities() {
 		f.formatEntity(entity, opts)
 	}
+
+	// Entity-level issues for this server
+	for _, issue := range issues {
+		if issue.Reference != nil && issue.Reference.ServerIndex == serverIndex {
+			f.formatEntityIssue(issue)
+		}
+	}
 }
 
 func (f *textFormatter) formatEntity(entity models.Entity, opts FormatOptions) {
@@ -115,6 +127,12 @@ func (f *textFormatter) formatEntity(entity models.Entity, opts FormatOptions) {
 	desc = strings.ReplaceAll(desc, "\n", " ")
 
 	fmt.Fprintf(f.writer, "    %s %s: %s\n", kind, entity.GetName(), desc)
+}
+
+func (f *textFormatter) formatEntityIssue(issue models.Issue) {
+	severity := issue.GetSeverity()
+	icon := severityIcon(severity)
+	fmt.Fprintf(f.writer, "    %s [%s] %s\n", icon, issue.Code, issue.Message)
 }
 
 func (f *textFormatter) formatGlobalIssue(issue models.Issue) {
