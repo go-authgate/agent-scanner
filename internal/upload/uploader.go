@@ -171,8 +171,9 @@ func getUsername() string {
 	return u.Username
 }
 
-// sanitizeBodySnippet truncates s to maxLen bytes and replaces
-// newlines/control characters with spaces for safe single-line logging.
+// sanitizeBodySnippet truncates s to approximately maxLen bytes (the
+// returned string may be slightly longer due to a " [truncated]" suffix)
+// and replaces newlines/control characters with spaces for safe single-line logging.
 func sanitizeBodySnippet(s string, maxLen int) string {
 	if len(s) > maxLen {
 		s = s[:maxLen] + " [truncated]"
