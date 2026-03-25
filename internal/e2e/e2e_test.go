@@ -33,9 +33,9 @@ func TestMain(m *testing.M) {
 }
 
 func setupAndRun(m *testing.M) int {
-	// E2E tests build external binaries and are slow; skip under -short.
-	if testing.Short() {
-		fmt.Fprintln(os.Stderr, "skipping E2E tests in short mode")
+	// E2E tests build external binaries and are slow; skip when SKIP_E2E is set.
+	if os.Getenv("SKIP_E2E") != "" {
+		fmt.Fprintln(os.Stderr, "skipping E2E tests (SKIP_E2E set)")
 		return 0
 	}
 
