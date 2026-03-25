@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -39,8 +40,12 @@ func setupAndRun(m *testing.M) int {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	mathServerBin = filepath.Join(tmpDir, "math-server")
-	weatherServerBin = filepath.Join(tmpDir, "weather-server")
+	exeSuffix := ""
+	if runtime.GOOS == "windows" {
+		exeSuffix = ".exe"
+	}
+	mathServerBin = filepath.Join(tmpDir, "math-server"+exeSuffix)
+	weatherServerBin = filepath.Join(tmpDir, "weather-server"+exeSuffix)
 
 	// Build test server binaries.
 	for _, b := range []struct {

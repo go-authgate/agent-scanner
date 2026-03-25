@@ -62,11 +62,19 @@ func (u *uploader) Upload(
 	redacted := make([]models.ScanPathResult, len(results))
 	copy(redacted, results)
 	for i := range redacted {
+		if redacted[i].Error != nil {
+			errCopy := *redacted[i].Error
+			redacted[i].Error = &errCopy
+		}
 		if len(redacted[i].Servers) > 0 {
 			servers := make([]models.ServerScanResult, len(redacted[i].Servers))
 			copy(servers, redacted[i].Servers)
 			for j := range servers {
 				servers[j].Server = cloneServerConfig(servers[j].Server)
+				if servers[j].Error != nil {
+					errCopy := *servers[j].Error
+					servers[j].Error = &errCopy
+				}
 			}
 			redacted[i].Servers = servers
 		}

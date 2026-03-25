@@ -79,7 +79,13 @@ func (t *CaptureTransport) Messages() []CapturedMessage {
 	defer t.mu.Unlock()
 
 	cp := make([]CapturedMessage, len(t.messages))
-	copy(cp, t.messages)
+	for i, m := range t.messages {
+		cp[i] = CapturedMessage{
+			Direction: m.Direction,
+			Timestamp: m.Timestamp,
+			Message:   cloneJSONRPCMessage(m.Message),
+		}
+	}
 	return cp
 }
 

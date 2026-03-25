@@ -200,7 +200,8 @@ func NewServer(cfg ServerConfig) (*mcp.Server, *ScanState) {
 func RunServer(cfg ServerConfig) error {
 	server, state := NewServer(cfg)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// If background scanning is enabled, run initial scan and start periodic scanning
 	if cfg.Background && cfg.ScanFn != nil {
