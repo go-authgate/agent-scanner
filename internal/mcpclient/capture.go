@@ -16,9 +16,11 @@ type CapturedMessage struct {
 
 // CaptureTransport wraps a Transport and records all sent/received messages.
 type CaptureTransport struct {
-	inner    Transport
-	messages []CapturedMessage
-	mu       sync.Mutex
+	inner     Transport
+	messages  []CapturedMessage
+	mu        sync.Mutex
+	recvOnce  sync.Once
+	wrappedCh <-chan *JSONRPCMessage
 }
 
 // NewCaptureTransport wraps an existing transport with message capture.
@@ -47,25 +49,27 @@ func (t *CaptureTransport) Send(ctx context.Context, msg *JSONRPCMessage) error 
 }
 
 // Receive returns a channel that captures messages as they arrive.
-// It wraps the inner transport's receive channel with a goroutine that
-// records each message before forwarding it.
+// The wrapped channel is created once; subsequent calls return the same channel.
 func (t *CaptureTransport) Receive() <-chan *JSONRPCMessage {
-	innerCh := t.inner.Receive()
-	wrappedCh := make(chan *JSONRPCMessage, 64)
-	go func() {
-		defer close(wrappedCh)
-		for msg := range innerCh {
-			t.mu.Lock()
-			t.messages = append(t.messages, CapturedMessage{
-				Direction: "received",
-				Timestamp: time.Now(),
-				Message:   cloneJSONRPCMessage(msg),
-			})
-			t.mu.Unlock()
-			wrappedCh <- msg
-		}
-	}()
-	return wrappedCh
+	t.recvOnce.Do(func() {
+		innerCh := t.inner.Receive()
+		ch := make(chan *JSONRPCMessage, 64)
+		go func() {
+			defer close(ch)
+			for msg := range innerCh {
+				t.mu.Lock()
+				t.messages = append(t.messages, CapturedMessage{
+					Direction: "received",
+					Timestamp: time.Now(),
+					Message:   cloneJSONRPCMessage(msg),
+				})
+				t.mu.Unlock()
+				ch <- msg
+			}
+		}()
+		t.wrappedCh = ch
+	})
+	return t.wrappedCh
 }
 
 // Close delegates to the inner transport.
