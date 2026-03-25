@@ -149,6 +149,9 @@ func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, bo
 		return fmt.Errorf("status %d: %s", resp.StatusCode, bodySnippet)
 	}
 
+	// Drain response body on success to allow HTTP connection reuse.
+	_, _ = io.Copy(io.Discard, resp.Body)
+
 	return nil
 }
 
