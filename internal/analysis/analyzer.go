@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
@@ -192,10 +193,7 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 
 	if httpResp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(io.LimitReader(httpResp.Body, 4096))
-		bodySnippet := string(respBody)
-		if len(bodySnippet) > 512 {
-			bodySnippet = bodySnippet[:512] + " [truncated]"
-		}
+		bodySnippet := sanitizeBodySnippet(string(respBody), 512)
 		if httpResp.StatusCode < 500 {
 			return &clientError{StatusCode: httpResp.StatusCode, Body: bodySnippet}
 		}
@@ -206,4 +204,14 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 		return &nonRetryableError{err: fmt.Errorf("decode response: %w", err)}
 	}
 	return nil
+}
+
+// sanitizeBodySnippet truncates s to maxLen bytes and replaces
+// newlines/control characters with spaces for safe single-line logging.
+func sanitizeBodySnippet(s string, maxLen int) string {
+	if len(s) > maxLen {
+		s = s[:maxLen] + " [truncated]"
+	}
+	replacer := strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ", "\t", " ")
+	return replacer.Replace(s)
 }

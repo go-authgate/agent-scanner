@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"strings"
 	"time"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
@@ -141,10 +142,7 @@ func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, bo
 
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		bodySnippet := string(respBody)
-		if len(bodySnippet) > 512 {
-			bodySnippet = bodySnippet[:512] + " [truncated]"
-		}
+		bodySnippet := sanitizeBodySnippet(string(respBody), 512)
 		if resp.StatusCode < 500 {
 			return &clientError{StatusCode: resp.StatusCode, Body: bodySnippet}
 		}
@@ -171,4 +169,14 @@ func getUsername() string {
 		return "unknown"
 	}
 	return u.Username
+}
+
+// sanitizeBodySnippet truncates s to maxLen bytes and replaces
+// newlines/control characters with spaces for safe single-line logging.
+func sanitizeBodySnippet(s string, maxLen int) string {
+	if len(s) > maxLen {
+		s = s[:maxLen] + " [truncated]"
+	}
+	replacer := strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ", "\t", " ")
+	return replacer.Replace(s)
 }
