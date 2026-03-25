@@ -3,6 +3,8 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -415,4 +417,21 @@ func TestScanState_Concurrency(t *testing.T) {
 	if len(got) != 0 {
 		t.Errorf("expected 0 results after overwrite, got %d", len(got))
 	}
+
+	// Exercise concurrent Set/Get to verify thread safety under -race.
+	var wg sync.WaitGroup
+	for i := range 10 {
+		wg.Add(2)
+		go func(n int) {
+			defer wg.Done()
+			state.Set([]models.ScanPathResult{
+				{Client: fmt.Sprintf("client-%d", n), Path: "/p"},
+			})
+		}(i)
+		go func() {
+			defer wg.Done()
+			_ = state.Get()
+		}()
+	}
+	wg.Wait()
 }
