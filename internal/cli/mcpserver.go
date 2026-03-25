@@ -32,7 +32,7 @@ func newMCPServerCmd() *cobra.Command {
 	return cmd
 }
 
-func runMCPServer(_ *cobra.Command, _ []string) error {
+func runMCPServer(cmd *cobra.Command, _ []string) error {
 	setupLogging()
 
 	// Build pipeline components
@@ -59,7 +59,7 @@ func runMCPServer(_ *cobra.Command, _ []string) error {
 
 	background := mcpServerFlags.Background && !mcpServerFlags.Tool
 
-	return mcpserver.RunServer(mcpserver.ServerConfig{
+	return mcpserver.RunServer(cmd.Context(), mcpserver.ServerConfig{
 		ScanFn:       scanFn,
 		Background:   background,
 		ScanInterval: time.Duration(mcpServerFlags.ScanInterval) * time.Minute,

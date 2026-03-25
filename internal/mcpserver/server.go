@@ -197,10 +197,11 @@ func NewServer(cfg ServerConfig) (*mcp.Server, *ScanState) {
 }
 
 // RunServer creates and runs the MCP server over stdio.
-func RunServer(cfg ServerConfig) error {
+// The provided context controls the server lifetime and background scanning.
+func RunServer(ctx context.Context, cfg ServerConfig) error {
 	server, state := NewServer(cfg)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	// If background scanning is enabled, run initial scan and start periodic scanning
