@@ -21,11 +21,10 @@ import (
 // clientError is a non-retryable HTTP error (4xx).
 type clientError struct {
 	StatusCode int
-	Body       string
 }
 
 func (e *clientError) Error() string {
-	return fmt.Sprintf("status %d: %s", e.StatusCode, e.Body)
+	return fmt.Sprintf("status %d", e.StatusCode)
 }
 
 // nonRetryableError wraps errors that should not be retried
@@ -102,13 +101,6 @@ func (u *uploader) Upload(
 		}
 		var ce *clientError
 		if errors.As(err, &ce) {
-			slog.Error(
-				"upload failed due to non-retryable client error",
-				"attempts", attempt+1,
-				"url", server.URL,
-				"status", ce.StatusCode,
-				"err", err,
-			)
 			return fmt.Errorf(
 				"upload failed due to non-retryable client error after %d attempt(s) (status=%d): %w",
 				attempt+1,
@@ -148,10 +140,14 @@ func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, bo
 
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		slog.Debug("upload received non-2xx response",
+			"status", resp.StatusCode,
+			"body_bytes", len(respBody),
+		)
 		if resp.StatusCode < 500 {
-			return &clientError{StatusCode: resp.StatusCode, Body: string(respBody)}
+			return &clientError{StatusCode: resp.StatusCode}
 		}
-		return fmt.Errorf("status %d: %s", resp.StatusCode, string(respBody))
+		return fmt.Errorf("status %d", resp.StatusCode)
 	}
 
 	return nil

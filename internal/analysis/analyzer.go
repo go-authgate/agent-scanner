@@ -18,11 +18,10 @@ import (
 // clientError is a non-retryable HTTP error (4xx).
 type clientError struct {
 	StatusCode int
-	Body       string
 }
 
 func (e *clientError) Error() string {
-	return fmt.Sprintf("status %d: %s", e.StatusCode, e.Body)
+	return fmt.Sprintf("status %d", e.StatusCode)
 }
 
 // nonRetryableError wraps errors that should not be retried
@@ -192,10 +191,14 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 
 	if httpResp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(io.LimitReader(httpResp.Body, 4096))
+		slog.Debug("analysis API returned non-2xx status",
+			"status", httpResp.StatusCode,
+			"body_bytes", len(respBody),
+		)
 		if httpResp.StatusCode < 500 {
-			return &clientError{StatusCode: httpResp.StatusCode, Body: string(respBody)}
+			return &clientError{StatusCode: httpResp.StatusCode}
 		}
-		return fmt.Errorf("status %d: %s", httpResp.StatusCode, string(respBody))
+		return fmt.Errorf("status %d", httpResp.StatusCode)
 	}
 
 	if err := json.NewDecoder(httpResp.Body).Decode(resp); err != nil {
