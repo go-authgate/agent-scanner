@@ -65,9 +65,9 @@ func TestUpload_Success(t *testing.T) {
 }
 
 func TestUpload_EmptyResults(t *testing.T) {
-	requestMade := false
+	var requestMade atomic.Bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestMade = true
+		requestMade.Store(true)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
@@ -79,7 +79,7 @@ func TestUpload_EmptyResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
-	if requestMade {
+	if requestMade.Load() {
 		t.Error("expected no HTTP request for empty results")
 	}
 
@@ -87,7 +87,7 @@ func TestUpload_EmptyResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected nil error for empty slice, got %v", err)
 	}
-	if requestMade {
+	if requestMade.Load() {
 		t.Error("expected no HTTP request for empty slice")
 	}
 }

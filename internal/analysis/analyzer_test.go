@@ -13,9 +13,9 @@ import (
 )
 
 func TestAnalyze_EmptyURL(t *testing.T) {
-	requestMade := false
+	var requestMade atomic.Bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestMade = true
+		requestMade.Store(true)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
@@ -41,7 +41,7 @@ func TestAnalyze_EmptyURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if requestMade {
+	if requestMade.Load() {
 		t.Error("expected no HTTP request when analysis URL is empty")
 	}
 	if len(out) != 1 {
@@ -133,9 +133,9 @@ func TestAnalyze_Success(t *testing.T) {
 }
 
 func TestAnalyze_NilSignatureSkipped(t *testing.T) {
-	requestMade := false
+	var requestMade atomic.Bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestMade = true
+		requestMade.Store(true)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(analysisResponse{})
 	}))
@@ -160,7 +160,7 @@ func TestAnalyze_NilSignatureSkipped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if requestMade {
+	if requestMade.Load() {
 		t.Error("expected no HTTP request when all signatures are nil")
 	}
 	if len(out) != 1 {
@@ -294,9 +294,9 @@ func TestAnalyze_FailureDoesNotFailOverall(t *testing.T) {
 }
 
 func TestAnalyze_AllNilSignatures(t *testing.T) {
-	requestMade := false
+	var requestMade atomic.Bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestMade = true
+		requestMade.Store(true)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(analysisResponse{})
 	}))
@@ -326,7 +326,7 @@ func TestAnalyze_AllNilSignatures(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if requestMade {
+	if requestMade.Load() {
 		t.Error("expected no HTTP request when all signatures are nil")
 	}
 	if len(out) != 1 {
