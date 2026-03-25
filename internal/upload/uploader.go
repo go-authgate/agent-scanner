@@ -105,9 +105,8 @@ func (u *uploader) Upload(
 		var ce *clientError
 		if errors.As(err, &ce) {
 			return fmt.Errorf(
-				"upload failed due to non-retryable client error after %d attempt(s) (status=%d): %w",
+				"upload failed due to non-retryable client error after %d attempt(s): %w",
 				attempt+1,
-				ce.StatusCode,
 				err,
 			)
 		}
