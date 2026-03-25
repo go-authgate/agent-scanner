@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
 	"github.com/go-authgate/agent-scanner/internal/tlsutil"
@@ -208,11 +209,15 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 
 // sanitizeBodySnippet truncates s to approximately maxLen bytes (the
 // returned string may be slightly longer due to a " [truncated]" suffix)
-// and replaces newlines/control characters with spaces for safe single-line logging.
+// and replaces all Unicode control characters with spaces for safe single-line logging.
 func sanitizeBodySnippet(s string, maxLen int) string {
 	if len(s) > maxLen {
 		s = s[:maxLen] + " [truncated]"
 	}
-	replacer := strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ", "\t", " ")
-	return replacer.Replace(s)
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, s)
 }
