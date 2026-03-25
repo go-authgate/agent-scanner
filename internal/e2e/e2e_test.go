@@ -1,3 +1,5 @@
+//go:build e2e
+
 package e2e_test
 
 import (
@@ -33,12 +35,6 @@ func TestMain(m *testing.M) {
 }
 
 func setupAndRun(m *testing.M) int {
-	// E2E tests build external binaries and are slow; skip when SKIP_E2E is set.
-	if os.Getenv("SKIP_E2E") != "" {
-		fmt.Fprintln(os.Stderr, "skipping E2E tests (SKIP_E2E set)")
-		return 0
-	}
-
 	tmpDir, err := os.MkdirTemp("", "e2e-testservers-*")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create temp dir: %v\n", err)
