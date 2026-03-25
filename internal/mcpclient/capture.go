@@ -2,6 +2,7 @@ package mcpclient
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"time"
 )
@@ -38,7 +39,7 @@ func (t *CaptureTransport) Send(ctx context.Context, msg *JSONRPCMessage) error 
 	t.messages = append(t.messages, CapturedMessage{
 		Direction: "sent",
 		Timestamp: time.Now(),
-		Message:   msg,
+		Message:   cloneJSONRPCMessage(msg),
 	})
 	t.mu.Unlock()
 
@@ -58,7 +59,7 @@ func (t *CaptureTransport) Receive() <-chan *JSONRPCMessage {
 			t.messages = append(t.messages, CapturedMessage{
 				Direction: "received",
 				Timestamp: time.Now(),
-				Message:   msg,
+				Message:   cloneJSONRPCMessage(msg),
 			})
 			t.mu.Unlock()
 			wrappedCh <- msg
@@ -79,5 +80,36 @@ func (t *CaptureTransport) Messages() []CapturedMessage {
 
 	cp := make([]CapturedMessage, len(t.messages))
 	copy(cp, t.messages)
+	return cp
+}
+
+// cloneJSONRPCMessage returns a deep copy of a JSONRPCMessage so that
+// later mutations by callers or the inner transport do not affect captured data.
+func cloneJSONRPCMessage(msg *JSONRPCMessage) *JSONRPCMessage {
+	if msg == nil {
+		return nil
+	}
+	c := *msg
+	c.Params = cloneRawMessage(msg.Params)
+	c.Result = cloneRawMessage(msg.Result)
+	if msg.ID != nil {
+		id := cloneRawMessage(*msg.ID)
+		c.ID = &id
+	}
+	if msg.Error != nil {
+		errCopy := *msg.Error
+		errCopy.Data = cloneRawMessage(msg.Error.Data)
+		c.Error = &errCopy
+	}
+	return &c
+}
+
+// cloneRawMessage returns a copy of a json.RawMessage byte slice.
+func cloneRawMessage(raw json.RawMessage) json.RawMessage {
+	if raw == nil {
+		return nil
+	}
+	cp := make(json.RawMessage, len(raw))
+	copy(cp, raw)
 	return cp
 }

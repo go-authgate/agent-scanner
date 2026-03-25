@@ -93,9 +93,19 @@ func InstallServer(configPath string) error {
 	}
 
 	// Get or create mcpServers section
-	mcpServers, ok := config["mcpServers"].(map[string]any)
-	if !ok {
+	var mcpServers map[string]any
+	if existing, exists := config["mcpServers"]; !exists {
 		mcpServers = make(map[string]any)
+	} else {
+		var ok bool
+		mcpServers, ok = existing.(map[string]any)
+		if !ok {
+			return fmt.Errorf(
+				"config key %q has unexpected type %T; expected object",
+				"mcpServers",
+				existing,
+			)
+		}
 	}
 
 	// Add/update agent-scanner entry

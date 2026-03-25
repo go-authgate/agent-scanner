@@ -20,11 +20,9 @@ func resolveCommand(command string) (string, error) {
 
 	// 2. Fallback: probe well-known installation directories.
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
-		home, homeErr := os.UserHomeDir()
-		if homeErr == nil {
-			if found := searchFallbackDirs(command, home); found != "" {
-				return found, nil
-			}
+		home, _ := os.UserHomeDir()
+		if found := searchFallbackDirs(command, home); found != "" {
+			return found, nil
 		}
 	}
 
@@ -37,15 +35,23 @@ func resolveCommand(command string) (string, error) {
 func searchFallbackDirs(command, home string) string {
 	// Directories to search (order matters — first match wins).
 	// Entries may contain glob wildcards.
-	dirs := []string{
-		filepath.Join(home, ".nvm", "versions", "node", "*", "bin"), // Node.js via nvm
-		filepath.Join(home, ".npm-global", "bin"),                   // npm global
-		filepath.Join(home, ".yarn", "bin"),                         // Yarn
-		filepath.Join(home, ".pyenv", "shims"),                      // pyenv
-		filepath.Join(home, ".cargo", "bin"),                        // Rust/Cargo
-		"/opt/homebrew/bin",                                         // Homebrew on ARM Mac
-		"/usr/local/bin",                                            // Homebrew on Intel Mac / system
-		filepath.Join(home, ".local", "bin"),                        // pip --user
+	// System dirs are always searched; home-based dirs are only added when home is known.
+	var dirs []string
+	if home != "" {
+		dirs = append(dirs,
+			filepath.Join(home, ".nvm", "versions", "node", "*", "bin"), // Node.js via nvm
+			filepath.Join(home, ".npm-global", "bin"),                   // npm global
+			filepath.Join(home, ".yarn", "bin"),                         // Yarn
+			filepath.Join(home, ".pyenv", "shims"),                      // pyenv
+			filepath.Join(home, ".cargo", "bin"),                        // Rust/Cargo
+		)
+	}
+	dirs = append(dirs,
+		"/opt/homebrew/bin", // Homebrew on ARM Mac
+		"/usr/local/bin",    // Homebrew on Intel Mac / system
+	)
+	if home != "" {
+		dirs = append(dirs, filepath.Join(home, ".local", "bin")) // pip --user
 	}
 
 	for _, dir := range dirs {
