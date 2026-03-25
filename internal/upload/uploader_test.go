@@ -227,8 +227,8 @@ func TestUpload_ScanMetadataVersionPopulated(t *testing.T) {
 
 func TestUpload_ContextCancellation(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Simulate a slow server by sleeping longer than the context deadline
-		time.Sleep(2 * time.Second)
+		// Simulate a slow server; sleep just long enough to exceed the client context deadline
+		time.Sleep(500 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
