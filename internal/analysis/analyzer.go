@@ -191,7 +191,7 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 	defer httpResp.Body.Close()
 
 	if httpResp.StatusCode >= 400 {
-		respBody, _ := io.ReadAll(httpResp.Body)
+		respBody, _ := io.ReadAll(io.LimitReader(httpResp.Body, 4096))
 		if httpResp.StatusCode < 500 {
 			return &clientError{StatusCode: httpResp.StatusCode, Body: string(respBody)}
 		}

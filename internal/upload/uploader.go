@@ -102,10 +102,16 @@ func (u *uploader) Upload(
 		}
 		var ce *clientError
 		if errors.As(err, &ce) {
+			slog.Error(
+				"upload failed due to non-retryable client error",
+				"attempts", attempt+1,
+				"url", server.URL,
+				"status", ce.StatusCode,
+				"err", err,
+			)
 			return fmt.Errorf(
-				"upload failed due to non-retryable client error after %d attempt(s) (url=%s, status=%d): %w",
+				"upload failed due to non-retryable client error after %d attempt(s) (status=%d): %w",
 				attempt+1,
-				server.URL,
 				ce.StatusCode,
 				err,
 			)
@@ -141,7 +147,7 @@ func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, bo
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		if resp.StatusCode < 500 {
 			return &clientError{StatusCode: resp.StatusCode, Body: string(respBody)}
 		}

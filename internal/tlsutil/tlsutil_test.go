@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"net/http"
 	"testing"
-	"time"
 )
 
 func TestCloneTransport_ReturnsNonNil(t *testing.T) {
@@ -25,20 +24,29 @@ func TestCloneTransport_ReturnsSeparateInstance(t *testing.T) {
 	}
 }
 
-func TestCloneTransport_HasExpectedDefaults(t *testing.T) {
+func TestCloneTransport_MatchesDefaultTransport(t *testing.T) {
 	tr := CloneTransport()
 
-	if tr.MaxIdleConns != 100 {
-		t.Errorf("MaxIdleConns = %d, want 100", tr.MaxIdleConns)
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		t.Skip("http.DefaultTransport is not *http.Transport")
 	}
-	if tr.IdleConnTimeout != 90*time.Second {
-		t.Errorf("IdleConnTimeout = %v, want 90s", tr.IdleConnTimeout)
+
+	if tr.MaxIdleConns != base.MaxIdleConns {
+		t.Errorf("MaxIdleConns = %d, want %d", tr.MaxIdleConns, base.MaxIdleConns)
 	}
-	if tr.TLSHandshakeTimeout != 10*time.Second {
-		t.Errorf("TLSHandshakeTimeout = %v, want 10s", tr.TLSHandshakeTimeout)
+	if tr.IdleConnTimeout != base.IdleConnTimeout {
+		t.Errorf("IdleConnTimeout = %v, want %v", tr.IdleConnTimeout, base.IdleConnTimeout)
 	}
-	if !tr.ForceAttemptHTTP2 {
-		t.Error("ForceAttemptHTTP2 = false, want true")
+	if tr.TLSHandshakeTimeout != base.TLSHandshakeTimeout {
+		t.Errorf(
+			"TLSHandshakeTimeout = %v, want %v",
+			tr.TLSHandshakeTimeout,
+			base.TLSHandshakeTimeout,
+		)
+	}
+	if tr.ForceAttemptHTTP2 != base.ForceAttemptHTTP2 {
+		t.Errorf("ForceAttemptHTTP2 = %v, want %v", tr.ForceAttemptHTTP2, base.ForceAttemptHTTP2)
 	}
 }
 
