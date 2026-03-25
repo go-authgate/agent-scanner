@@ -25,6 +25,15 @@ func (e *clientError) Error() string {
 	return fmt.Sprintf("status %d: %s", e.StatusCode, e.Body)
 }
 
+// nonRetryableError wraps errors that should not be retried
+// (e.g., request construction failures, JSON decode errors).
+type nonRetryableError struct {
+	err error
+}
+
+func (e *nonRetryableError) Error() string { return e.err.Error() }
+func (e *nonRetryableError) Unwrap() error { return e.err }
+
 // Analyzer performs security analysis on scan results.
 type Analyzer interface {
 	Analyze(ctx context.Context, results []models.ScanPathResult) ([]models.ScanPathResult, error)
@@ -132,6 +141,11 @@ func (a *remoteAnalyzer) analyzePathResult(
 		if err == nil {
 			break
 		}
+		// Do not retry non-retryable errors (bad URL, JSON decode, etc.)
+		var nre *nonRetryableError
+		if errors.As(err, &nre) {
+			return fmt.Errorf("analysis API: %w", err)
+		}
 		// Do not retry client errors (4xx)
 		var ce *clientError
 		if errors.As(err, &ce) {
@@ -166,7 +180,7 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return err
+		return &nonRetryableError{err: err}
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -184,5 +198,8 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 		return fmt.Errorf("status %d: %s", httpResp.StatusCode, string(respBody))
 	}
 
-	return json.NewDecoder(httpResp.Body).Decode(resp)
+	if err := json.NewDecoder(httpResp.Body).Decode(resp); err != nil {
+		return &nonRetryableError{err: fmt.Errorf("decode response: %w", err)}
+	}
+	return nil
 }

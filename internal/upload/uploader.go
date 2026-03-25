@@ -28,6 +28,15 @@ func (e *clientError) Error() string {
 	return fmt.Sprintf("status %d: %s", e.StatusCode, e.Body)
 }
 
+// nonRetryableError wraps errors that should not be retried
+// (e.g., request construction failures).
+type nonRetryableError struct {
+	err error
+}
+
+func (e *nonRetryableError) Error() string { return e.err.Error() }
+func (e *nonRetryableError) Unwrap() error { return e.err }
+
 // Uploader pushes scan results to control servers.
 type Uploader interface {
 	Upload(ctx context.Context, results []models.ScanPathResult, server models.ControlServer) error
@@ -86,7 +95,11 @@ func (u *uploader) Upload(
 			slog.Info("upload successful", "url", server.URL)
 			return nil
 		}
-		// Do not retry client errors (4xx)
+		// Do not retry client errors (4xx) or non-retryable errors (e.g., bad URL)
+		var nre *nonRetryableError
+		if errors.As(err, &nre) {
+			return fmt.Errorf("upload failed: %w", err)
+		}
 		var ce *clientError
 		if errors.As(err, &ce) {
 			return fmt.Errorf(
@@ -114,7 +127,7 @@ func (u *uploader) Upload(
 func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, body []byte) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL, bytes.NewReader(body))
 	if err != nil {
-		return err
+		return &nonRetryableError{err: err}
 	}
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range server.Headers {
