@@ -22,7 +22,6 @@ type ServerConfig struct {
 	ScanFn       ScanFunc
 	Background   bool
 	ScanInterval time.Duration
-	ClientName   string
 }
 
 // ScanState holds the cached scan results and provides thread-safe access.
@@ -35,14 +34,25 @@ type ScanState struct {
 func (s *ScanState) Set(results []models.ScanPathResult) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.results = results
+	s.results = copyScanResults(results)
 }
 
 // Get retrieves the cached scan results.
 func (s *ScanState) Get() []models.ScanPathResult {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.results
+	return copyScanResults(s.results)
+}
+
+// copyScanResults returns a shallow copy of the provided scan results slice
+// to avoid sharing the underlying array between callers and the internal cache.
+func copyScanResults(src []models.ScanPathResult) []models.ScanPathResult {
+	if src == nil {
+		return nil
+	}
+	dst := make([]models.ScanPathResult, len(src))
+	copy(dst, src)
+	return dst
 }
 
 // scanInput is the typed input for the scan tool.
@@ -146,7 +156,7 @@ func NewServer(cfg ServerConfig) (*mcp.Server, *ScanState) {
 		// Also provide a text summary in the content for easy consumption
 		jsonBytes, err := json.MarshalIndent(output, "", "  ")
 		if err != nil {
-			return nil, output, nil
+			return nil, output, fmt.Errorf("failed to marshal scan results: %w", err)
 		}
 
 		return &mcp.CallToolResult{
@@ -173,7 +183,7 @@ func NewServer(cfg ServerConfig) (*mcp.Server, *ScanState) {
 
 		jsonBytes, err := json.MarshalIndent(output, "", "  ")
 		if err != nil {
-			return nil, output, nil
+			return nil, output, fmt.Errorf("failed to marshal scan results: %w", err)
 		}
 
 		return &mcp.CallToolResult{

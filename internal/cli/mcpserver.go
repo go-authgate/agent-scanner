@@ -29,8 +29,6 @@ func newMCPServerCmd() *cobra.Command {
 		BoolVar(&mcpServerFlags.Background, "background", true, "Enable background periodic scanning")
 	cmd.Flags().
 		IntVar(&mcpServerFlags.ScanInterval, "scan-interval", 30, "Background scan interval in minutes")
-	cmd.Flags().
-		StringVar(&mcpServerFlags.ClientName, "client-name", "", "Client name for identification")
 	return cmd
 }
 
@@ -65,6 +63,5 @@ func runMCPServer(_ *cobra.Command, _ []string) error {
 		ScanFn:       scanFn,
 		Background:   background,
 		ScanInterval: time.Duration(mcpServerFlags.ScanInterval) * time.Minute,
-		ClientName:   mcpServerFlags.ClientName,
 	})
 }

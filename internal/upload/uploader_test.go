@@ -3,6 +3,7 @@ package upload
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -119,10 +120,9 @@ func TestUpload_4xxNoRetry(t *testing.T) {
 
 	// Verify it's a clientError
 	var ce *clientError
-	if !containsClientError(err) {
+	if !errors.As(err, &ce) {
 		t.Errorf("expected clientError in chain, got %T: %v", err, err)
 	}
-	_ = ce
 }
 
 func TestUpload_5xxRetries(t *testing.T) {
@@ -246,22 +246,4 @@ func TestUpload_ContextCancellation(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error due to context cancellation")
 	}
-}
-
-// containsClientError checks if the error chain contains a *clientError.
-func containsClientError(err error) bool {
-	var ce *clientError
-	for e := err; e != nil; {
-		if _, ok := e.(*clientError); ok {
-			return true
-		}
-		// Check using errors.As which unwraps
-		if unwrapper, ok := e.(interface{ Unwrap() error }); ok {
-			e = unwrapper.Unwrap()
-		} else {
-			break
-		}
-	}
-	_ = ce
-	return false
 }

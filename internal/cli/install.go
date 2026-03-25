@@ -29,16 +29,14 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cmd.Printf("No config file specified, using default: %s\n", defaultPath)
+		configPath = defaultPath
+		cmd.Printf("No config file specified, using default: %s\n", configPath)
 	}
 
 	if err := mcpserver.InstallServer(configPath); err != nil {
 		return fmt.Errorf("installation failed: %w", err)
 	}
 
-	if configPath == "" {
-		configPath = "(default)"
-	}
 	cmd.Printf("Successfully installed agent-scanner as MCP server in %s\n", configPath)
 	return nil
 }

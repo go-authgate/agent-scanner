@@ -3,6 +3,7 @@ package mcpclient
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -30,6 +31,9 @@ func TestResolveCommand_NotFound(t *testing.T) {
 }
 
 func TestResolveCommand_FallbackDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fallback dirs and Unix executable bits not applicable on Windows")
+	}
 	// Create a temporary directory that mimics a fallback location and
 	// place a fake executable there.
 	tmpDir := t.TempDir()
@@ -63,6 +67,9 @@ func TestSearchFallbackDirs_NotFound(t *testing.T) {
 }
 
 func TestIsExecutable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix executable permission bits not applicable on Windows")
+	}
 	tmpDir := t.TempDir()
 
 	// Non-executable file
