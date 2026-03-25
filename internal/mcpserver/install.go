@@ -80,13 +80,15 @@ func InstallServer(configPath string) error {
 	var config map[string]any
 
 	data, err := os.ReadFile(configPath)
-	if err != nil {
+	switch {
+	case err != nil:
 		if !os.IsNotExist(err) {
 			return fmt.Errorf("reading config file: %w", err)
 		}
-		// File doesn't exist, create new config
 		config = make(map[string]any)
-	} else {
+	case strings.TrimSpace(string(data)) == "":
+		config = make(map[string]any)
+	default:
 		if err := json.Unmarshal(data, &config); err != nil {
 			return fmt.Errorf("parsing config file: %w", err)
 		}

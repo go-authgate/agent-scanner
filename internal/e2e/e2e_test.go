@@ -33,6 +33,12 @@ func TestMain(m *testing.M) {
 }
 
 func setupAndRun(m *testing.M) int {
+	// E2E tests build external binaries and are slow; skip under -short.
+	if testing.Short() {
+		fmt.Fprintln(os.Stderr, "skipping E2E tests in short mode")
+		return 0
+	}
+
 	tmpDir, err := os.MkdirTemp("", "e2e-testservers-*")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create temp dir: %v\n", err)
