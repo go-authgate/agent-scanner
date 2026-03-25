@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -100,12 +101,12 @@ func TestNewServer_RegistersTools(t *testing.T) {
 }
 
 func TestScanTool_CallsScanFunc(t *testing.T) {
-	scanCalled := false
+	var scanCalled atomic.Bool
 	expectedResults := mockScanResults()
 
 	cfg := ServerConfig{
 		ScanFn: func(_ context.Context, paths []string, skills bool) ([]models.ScanPathResult, error) {
-			scanCalled = true
+			scanCalled.Store(true)
 			if len(paths) != 1 || paths[0] != "/tmp/config.json" {
 				t.Errorf("unexpected paths: %v", paths)
 			}
@@ -145,7 +146,7 @@ func TestScanTool_CallsScanFunc(t *testing.T) {
 		t.Fatalf("CallTool scan failed: %v", err)
 	}
 
-	if !scanCalled {
+	if !scanCalled.Load() {
 		t.Error("scan function was not called")
 	}
 

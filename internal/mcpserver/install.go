@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/tidwall/jsonc"
 )
 
 // DefaultConfigPath returns the default Claude Desktop config path for the current platform.
@@ -89,7 +91,7 @@ func InstallServer(configPath string) error {
 	case strings.TrimSpace(string(data)) == "":
 		config = make(map[string]any)
 	default:
-		if err := json.Unmarshal(data, &config); err != nil {
+		if err := json.Unmarshal(jsonc.ToJSON(data), &config); err != nil {
 			return fmt.Errorf("parsing config file: %w", err)
 		}
 	}

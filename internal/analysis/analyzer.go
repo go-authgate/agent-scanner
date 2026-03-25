@@ -200,6 +200,6 @@ func statusMessage(code int, body string) string {
 	case http.StatusTooManyRequests:
 		return "rate limited – please try again later"
 	default:
-		return fmt.Sprintf("client error %d: %s", code, body)
+		return body
 	}
 }
