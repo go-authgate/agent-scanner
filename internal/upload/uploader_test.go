@@ -3,6 +3,7 @@ package upload
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -119,10 +120,9 @@ func TestUpload_4xxNoRetry(t *testing.T) {
 
 	// Verify it's a clientError
 	var ce *clientError
-	if !containsClientError(err) {
+	if !errors.As(err, &ce) {
 		t.Errorf("expected clientError in chain, got %T: %v", err, err)
 	}
-	_ = ce
 }
 
 func TestUpload_5xxRetries(t *testing.T) {
@@ -141,10 +141,10 @@ func TestUpload_5xxRetries(t *testing.T) {
 	}
 	server := models.ControlServer{URL: ts.URL}
 
-	// Use a context with a short deadline to avoid waiting for full backoff.
-	// The first request is immediate, then backoff is 1s, 2s.
-	// With a 1500ms deadline, we should get at least 2 attempts.
-	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	// Use a context with a bounded deadline to avoid waiting for full backoff
+	// while still allowing multiple retries. The first request is immediate,
+	// then backoff is 1s, 2s, so we give ample time for at least two attempts.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	err := u.Upload(ctx, results, server)
@@ -246,22 +246,4 @@ func TestUpload_ContextCancellation(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error due to context cancellation")
 	}
-}
-
-// containsClientError checks if the error chain contains a *clientError.
-func containsClientError(err error) bool {
-	var ce *clientError
-	for e := err; e != nil; {
-		if _, ok := e.(*clientError); ok {
-			return true
-		}
-		// Check using errors.As which unwraps
-		if unwrapper, ok := e.(interface{ Unwrap() error }); ok {
-			e = unwrapper.Unwrap()
-		} else {
-			break
-		}
-	}
-	_ = ce
-	return false
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func TestCloneTransport_ReturnsNonNil(t *testing.T) {
@@ -30,10 +31,10 @@ func TestCloneTransport_HasExpectedDefaults(t *testing.T) {
 	if tr.MaxIdleConns != 100 {
 		t.Errorf("MaxIdleConns = %d, want 100", tr.MaxIdleConns)
 	}
-	if tr.IdleConnTimeout != 90e9 {
+	if tr.IdleConnTimeout != 90*time.Second {
 		t.Errorf("IdleConnTimeout = %v, want 90s", tr.IdleConnTimeout)
 	}
-	if tr.TLSHandshakeTimeout != 10e9 {
+	if tr.TLSHandshakeTimeout != 10*time.Second {
 		t.Errorf("TLSHandshakeTimeout = %v, want 10s", tr.TLSHandshakeTimeout)
 	}
 	if !tr.ForceAttemptHTTP2 {

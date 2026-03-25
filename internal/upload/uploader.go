@@ -89,7 +89,13 @@ func (u *uploader) Upload(
 		// Do not retry client errors (4xx)
 		var ce *clientError
 		if errors.As(err, &ce) {
-			return err
+			return fmt.Errorf(
+				"upload failed due to non-retryable client error after %d attempt(s) (url=%s, status=%d): %w",
+				attempt+1,
+				server.URL,
+				ce.StatusCode,
+				err,
+			)
 		}
 		if attempt < maxRetries-1 {
 			backoff := time.Duration(1<<uint(attempt)) * time.Second

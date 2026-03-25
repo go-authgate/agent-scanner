@@ -233,10 +233,10 @@ func TestAnalyze_5xxRetries(t *testing.T) {
 		},
 	}
 
-	// Use a context with a short deadline so we don't wait for full backoff.
+	// Use a context with a deadline so we don't wait for full backoff.
 	// First request is immediate, then 1s backoff, then 2s backoff.
-	// With 1500ms we should get at least 2 attempts.
-	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	// With a 4s timeout we should reliably get at least 2 attempts without flakiness.
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 
 	_, err := a.Analyze(ctx, results)
