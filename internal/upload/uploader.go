@@ -4,17 +4,40 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/user"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
 	"github.com/go-authgate/agent-scanner/internal/redact"
+	"github.com/go-authgate/agent-scanner/internal/version"
 )
+
+// clientError is a non-retryable HTTP error (4xx).
+type clientError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *clientError) Error() string {
+	return fmt.Sprintf("status %d: %s", e.StatusCode, e.Body)
+}
+
+// nonRetryableError wraps errors that should not be retried
+// (e.g., request construction failures).
+type nonRetryableError struct {
+	err error
+}
+
+func (e *nonRetryableError) Error() string { return e.err.Error() }
+func (e *nonRetryableError) Unwrap() error { return e.err }
 
 // Uploader pushes scan results to control servers.
 type Uploader interface {
@@ -56,6 +79,9 @@ func (u *uploader) Upload(
 			Hostname: getHostname(),
 			Username: getUsername(),
 		},
+		ScanMetadata: &models.ScanMetadata{
+			Version: version.Version,
+		},
 	}
 
 	body, err := json.Marshal(payload)
@@ -63,13 +89,26 @@ func (u *uploader) Upload(
 		return fmt.Errorf("marshal upload payload: %w", err)
 	}
 
-	// Retry with exponential backoff
+	// Retry with exponential backoff (only retry on 5xx / network errors)
 	maxRetries := 3
 	for attempt := range maxRetries {
 		err = u.doUpload(ctx, server, body)
 		if err == nil {
 			slog.Info("upload successful", "url", server.URL)
 			return nil
+		}
+		// Do not retry client errors (4xx) or non-retryable errors (e.g., bad URL)
+		var nre *nonRetryableError
+		if errors.As(err, &nre) {
+			return fmt.Errorf("upload failed: %w", err)
+		}
+		var ce *clientError
+		if errors.As(err, &ce) {
+			return fmt.Errorf(
+				"upload failed due to non-retryable client error after %d attempt(s): %w",
+				attempt+1,
+				err,
+			)
 		}
 		if attempt < maxRetries-1 {
 			backoff := time.Duration(1<<uint(attempt)) * time.Second
@@ -88,7 +127,7 @@ func (u *uploader) Upload(
 func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, body []byte) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL, bytes.NewReader(body))
 	if err != nil {
-		return err
+		return &nonRetryableError{err: err}
 	}
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range server.Headers {
@@ -102,9 +141,16 @@ func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, bo
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("status %d: %s", resp.StatusCode, string(respBody))
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		bodySnippet := sanitizeBodySnippet(string(respBody), 512)
+		if resp.StatusCode < 500 {
+			return &clientError{StatusCode: resp.StatusCode, Body: bodySnippet}
+		}
+		return fmt.Errorf("status %d: %s", resp.StatusCode, bodySnippet)
 	}
+
+	// Drain response body on success to allow HTTP connection reuse.
+	_, _ = io.Copy(io.Discard, resp.Body)
 
 	return nil
 }
@@ -126,4 +172,19 @@ func getUsername() string {
 		return "unknown"
 	}
 	return u.Username
+}
+
+// sanitizeBodySnippet truncates s to approximately maxLen bytes (the
+// returned string may be slightly longer due to a " [truncated]" suffix)
+// and replaces all Unicode control characters with spaces for safe single-line logging.
+func sanitizeBodySnippet(s string, maxLen int) string {
+	if len(s) > maxLen {
+		s = s[:maxLen] + " [truncated]"
+	}
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, s)
 }
