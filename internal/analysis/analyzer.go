@@ -9,7 +9,9 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
 	"github.com/go-authgate/agent-scanner/internal/tlsutil"
@@ -24,6 +26,15 @@ type clientError struct {
 func (e *clientError) Error() string {
 	return fmt.Sprintf("status %d: %s", e.StatusCode, e.Body)
 }
+
+// nonRetryableError wraps errors that should not be retried
+// (e.g., request construction failures, JSON decode errors).
+type nonRetryableError struct {
+	err error
+}
+
+func (e *nonRetryableError) Error() string { return e.err.Error() }
+func (e *nonRetryableError) Unwrap() error { return e.err }
 
 // Analyzer performs security analysis on scan results.
 type Analyzer interface {
@@ -132,6 +143,11 @@ func (a *remoteAnalyzer) analyzePathResult(
 		if err == nil {
 			break
 		}
+		// Do not retry non-retryable errors (bad URL, JSON decode, etc.)
+		var nre *nonRetryableError
+		if errors.As(err, &nre) {
+			return fmt.Errorf("analysis API: %w", err)
+		}
 		// Do not retry client errors (4xx)
 		var ce *clientError
 		if errors.As(err, &ce) {
@@ -166,7 +182,7 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return err
+		return &nonRetryableError{err: err}
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -177,29 +193,31 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 	defer httpResp.Body.Close()
 
 	if httpResp.StatusCode >= 400 {
-		respBody, _ := io.ReadAll(httpResp.Body)
+		respBody, _ := io.ReadAll(io.LimitReader(httpResp.Body, 4096))
+		bodySnippet := sanitizeBodySnippet(string(respBody), 512)
 		if httpResp.StatusCode < 500 {
-			msg := statusMessage(httpResp.StatusCode, string(respBody))
-			return &clientError{StatusCode: httpResp.StatusCode, Body: msg}
+			return &clientError{StatusCode: httpResp.StatusCode, Body: bodySnippet}
 		}
-		return fmt.Errorf("analysis server unreachable (status %d)", httpResp.StatusCode)
+		return fmt.Errorf("status %d: %s", httpResp.StatusCode, bodySnippet)
 	}
 
-	return json.NewDecoder(httpResp.Body).Decode(resp)
+	if err := json.NewDecoder(httpResp.Body).Decode(resp); err != nil {
+		return &nonRetryableError{err: fmt.Errorf("decode response: %w", err)}
+	}
+	return nil
 }
 
-// statusMessage returns a user-friendly message for common HTTP status codes.
-func statusMessage(code int, body string) string {
-	switch code {
-	case http.StatusUnauthorized:
-		return "unauthorized – check your API credentials"
-	case http.StatusForbidden:
-		return "forbidden – insufficient permissions"
-	case http.StatusRequestEntityTooLarge:
-		return "payload too large – server has too many entities"
-	case http.StatusTooManyRequests:
-		return "rate limited – please try again later"
-	default:
-		return body
+// sanitizeBodySnippet truncates s to approximately maxLen bytes (the
+// returned string may be slightly longer due to a " [truncated]" suffix)
+// and replaces all Unicode control characters with spaces for safe single-line logging.
+func sanitizeBodySnippet(s string, maxLen int) string {
+	if len(s) > maxLen {
+		s = s[:maxLen] + " [truncated]"
 	}
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, s)
 }

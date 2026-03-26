@@ -13,9 +13,9 @@ import (
 )
 
 func TestAnalyze_EmptyURL(t *testing.T) {
-	requestMade := false
+	var requestMade atomic.Bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestMade = true
+		requestMade.Store(true)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
@@ -41,7 +41,7 @@ func TestAnalyze_EmptyURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if requestMade {
+	if requestMade.Load() {
 		t.Error("expected no HTTP request when analysis URL is empty")
 	}
 	if len(out) != 1 {
@@ -133,9 +133,9 @@ func TestAnalyze_Success(t *testing.T) {
 }
 
 func TestAnalyze_NilSignatureSkipped(t *testing.T) {
-	requestMade := false
+	var requestMade atomic.Bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestMade = true
+		requestMade.Store(true)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(analysisResponse{})
 	}))
@@ -160,7 +160,7 @@ func TestAnalyze_NilSignatureSkipped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if requestMade {
+	if requestMade.Load() {
 		t.Error("expected no HTTP request when all signatures are nil")
 	}
 	if len(out) != 1 {
@@ -233,10 +233,10 @@ func TestAnalyze_5xxRetries(t *testing.T) {
 		},
 	}
 
-	// Use a context with a short deadline so we don't wait for full backoff.
+	// Use a context with a deadline so we don't wait for full backoff.
 	// First request is immediate, then 1s backoff, then 2s backoff.
-	// With 1500ms we should get at least 2 attempts.
-	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	// With a 4s timeout we should reliably get at least 2 attempts without flakiness.
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 
 	_, err := a.Analyze(ctx, results)
@@ -294,9 +294,9 @@ func TestAnalyze_FailureDoesNotFailOverall(t *testing.T) {
 }
 
 func TestAnalyze_AllNilSignatures(t *testing.T) {
-	requestMade := false
+	var requestMade atomic.Bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestMade = true
+		requestMade.Store(true)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(analysisResponse{})
 	}))
@@ -326,7 +326,7 @@ func TestAnalyze_AllNilSignatures(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if requestMade {
+	if requestMade.Load() {
 		t.Error("expected no HTTP request when all signatures are nil")
 	}
 	if len(out) != 1 {

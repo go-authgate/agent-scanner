@@ -24,12 +24,12 @@ func TestCloneTransport_ReturnsSeparateInstance(t *testing.T) {
 	}
 }
 
-func TestCloneTransport_HasExpectedDefaults(t *testing.T) {
+func TestCloneTransport_MatchesDefaultTransport(t *testing.T) {
 	tr := CloneTransport()
 
 	base, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
-		t.Skip("http.DefaultTransport is not *http.Transport; cannot compare defaults")
+		t.Skip("http.DefaultTransport is not *http.Transport")
 	}
 
 	if tr.MaxIdleConns != base.MaxIdleConns {
@@ -41,7 +41,8 @@ func TestCloneTransport_HasExpectedDefaults(t *testing.T) {
 	if tr.TLSHandshakeTimeout != base.TLSHandshakeTimeout {
 		t.Errorf(
 			"TLSHandshakeTimeout = %v, want %v",
-			tr.TLSHandshakeTimeout, base.TLSHandshakeTimeout,
+			tr.TLSHandshakeTimeout,
+			base.TLSHandshakeTimeout,
 		)
 	}
 	if tr.ForceAttemptHTTP2 != base.ForceAttemptHTTP2 {

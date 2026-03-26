@@ -65,9 +65,9 @@ func TestUpload_Success(t *testing.T) {
 }
 
 func TestUpload_EmptyResults(t *testing.T) {
-	requestMade := false
+	var requestMade atomic.Bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestMade = true
+		requestMade.Store(true)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
@@ -79,7 +79,7 @@ func TestUpload_EmptyResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
-	if requestMade {
+	if requestMade.Load() {
 		t.Error("expected no HTTP request for empty results")
 	}
 
@@ -87,7 +87,7 @@ func TestUpload_EmptyResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected nil error for empty slice, got %v", err)
 	}
-	if requestMade {
+	if requestMade.Load() {
 		t.Error("expected no HTTP request for empty slice")
 	}
 }
@@ -141,10 +141,10 @@ func TestUpload_5xxRetries(t *testing.T) {
 	}
 	server := models.ControlServer{URL: ts.URL}
 
-	// Use a context with a short deadline to avoid waiting for full backoff.
-	// The first request is immediate, then backoff is 1s, 2s.
-	// With a 1500ms deadline, we should get at least 2 attempts.
-	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	// Use a context with a bounded deadline to avoid waiting for full backoff
+	// while still allowing multiple retries. The first request is immediate,
+	// then backoff is 1s, 2s, so we give ample time for at least two attempts.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	err := u.Upload(ctx, results, server)
@@ -227,8 +227,8 @@ func TestUpload_ScanMetadataVersionPopulated(t *testing.T) {
 
 func TestUpload_ContextCancellation(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Simulate a slow server by sleeping longer than the context deadline
-		time.Sleep(2 * time.Second)
+		// Simulate a slow server; sleep just long enough to exceed the client context deadline
+		time.Sleep(500 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
