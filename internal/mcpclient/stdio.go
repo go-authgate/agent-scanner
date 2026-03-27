@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
 )
@@ -20,7 +21,8 @@ type stdioTransport struct {
 	stdout io.ReadCloser
 	stderr io.ReadCloser
 	recvCh chan *JSONRPCMessage
-	Stderr []string
+	mu     sync.Mutex
+	lines  []string
 }
 
 // NewStdioTransport creates a transport that communicates via subprocess stdio.
@@ -75,7 +77,7 @@ func (t *stdioTransport) Connect(ctx context.Context) error {
 	// Capture stderr in background
 	go t.readStderr()
 
-	slog.Debug("stdio transport connected", "command", command, "args", args)
+	slog.Debug("stdio transport connected", "command", command, "args", sanitizeArgs(args))
 	return nil
 }
 
@@ -101,9 +103,20 @@ func (t *stdioTransport) readStderr() {
 	scanner := bufio.NewScanner(t.stderr)
 	for scanner.Scan() {
 		line := scanner.Text()
-		t.Stderr = append(t.Stderr, line)
+		t.mu.Lock()
+		t.lines = append(t.lines, line)
+		t.mu.Unlock()
 		slog.Debug("server stderr", "line", line)
 	}
+}
+
+// GetStderr returns a copy of the captured stderr lines.
+func (t *stdioTransport) GetStderr() []string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	out := make([]string, len(t.lines))
+	copy(out, t.lines)
+	return out
 }
 
 func (t *stdioTransport) Send(_ context.Context, msg *JSONRPCMessage) error {

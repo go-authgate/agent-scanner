@@ -88,3 +88,65 @@ func TestIsPath(t *testing.T) {
 		}
 	}
 }
+
+func TestLooksLikeSecret(t *testing.T) {
+	positives := []string{
+		"sk-abc123",             // OpenAI
+		"sk-ant-api03-abc",      // Anthropic
+		"ghp_abcdef1234567890",  // GitHub PAT
+		"gho_token",             // GitHub OAuth
+		"github_pat_abc",        // GitHub fine-grained
+		"Bearer my-token",       // Bearer token
+		"AKIAIOSFODNN7EXAMPLE",  // AWS access key
+		"xoxb-slack-bot-token",  // Slack bot
+		"xoxp-slack-user-token", // Slack user
+		"xapp-slack-app-token",  // Slack app
+		"glpat-xxxxxxxxxxxx",    // GitLab PAT
+		"npm_xxxxxxxx",          // npm token
+		"pypi-AgEIcHlwaS5vcmc",  // PyPI token
+		"whsec_abcdef123456",    // Stripe webhook
+		"sk_live_abc123",        // Stripe live key
+		"sk_test_abc123",        // Stripe test key
+		"rk_live_abc123",        // Stripe restricted
+		"AGE-SECRET-KEY-1abc",   // age key
+	}
+
+	for _, s := range positives {
+		if !LooksLikeSecret(s) {
+			t.Errorf("LooksLikeSecret(%q) = false, want true", s)
+		}
+	}
+
+	negatives := []string{
+		"--port",
+		"8080",
+		"localhost",
+		"my-server",
+		"true",
+		"",
+		"short",
+	}
+
+	for _, s := range negatives {
+		if LooksLikeSecret(s) {
+			t.Errorf("LooksLikeSecret(%q) = true, want false", s)
+		}
+	}
+}
+
+func TestLooksLikeSecret_HighEntropy(t *testing.T) {
+	// Long mixed-case alphanumeric string should be detected
+	if !LooksLikeSecret("aB3cD4eF5gH6iJ7kL8mN9oP") {
+		t.Error("expected high-entropy string to be detected as secret")
+	}
+
+	// Short string should not trigger entropy heuristic
+	if LooksLikeSecret("aB3c") {
+		t.Error("short mixed-case string should not be detected")
+	}
+
+	// String with spaces should not trigger
+	if LooksLikeSecret("this Is A Regular Sentence 123") {
+		t.Error("string with spaces should not trigger entropy heuristic")
+	}
+}

@@ -11,33 +11,13 @@ import (
 	"net/http"
 	"os"
 	"os/user"
-	"strings"
 	"time"
-	"unicode"
 
+	"github.com/go-authgate/agent-scanner/internal/httperrors"
 	"github.com/go-authgate/agent-scanner/internal/models"
 	"github.com/go-authgate/agent-scanner/internal/redact"
 	"github.com/go-authgate/agent-scanner/internal/version"
 )
-
-// clientError is a non-retryable HTTP error (4xx).
-type clientError struct {
-	StatusCode int
-	Body       string
-}
-
-func (e *clientError) Error() string {
-	return fmt.Sprintf("status %d: %s", e.StatusCode, e.Body)
-}
-
-// nonRetryableError wraps errors that should not be retried
-// (e.g., request construction failures).
-type nonRetryableError struct {
-	err error
-}
-
-func (e *nonRetryableError) Error() string { return e.err.Error() }
-func (e *nonRetryableError) Unwrap() error { return e.err }
 
 // Uploader pushes scan results to control servers.
 type Uploader interface {
@@ -98,11 +78,11 @@ func (u *uploader) Upload(
 			return nil
 		}
 		// Do not retry client errors (4xx) or non-retryable errors (e.g., bad URL)
-		var nre *nonRetryableError
+		var nre *httperrors.NonRetryableError
 		if errors.As(err, &nre) {
 			return fmt.Errorf("upload failed: %w", err)
 		}
-		var ce *clientError
+		var ce *httperrors.ClientError
 		if errors.As(err, &ce) {
 			return fmt.Errorf(
 				"upload failed due to non-retryable client error after %d attempt(s): %w",
@@ -127,7 +107,7 @@ func (u *uploader) Upload(
 func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, body []byte) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL, bytes.NewReader(body))
 	if err != nil {
-		return &nonRetryableError{err: err}
+		return &httperrors.NonRetryableError{Err: err}
 	}
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range server.Headers {
@@ -142,9 +122,9 @@ func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, bo
 
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		bodySnippet := sanitizeBodySnippet(string(respBody), 512)
+		bodySnippet := httperrors.SanitizeBodySnippet(string(respBody), 512)
 		if resp.StatusCode < 500 {
-			return &clientError{StatusCode: resp.StatusCode, Body: bodySnippet}
+			return &httperrors.ClientError{StatusCode: resp.StatusCode, Body: bodySnippet}
 		}
 		return fmt.Errorf("status %d: %s", resp.StatusCode, bodySnippet)
 	}
@@ -172,19 +152,4 @@ func getUsername() string {
 		return "unknown"
 	}
 	return u.Username
-}
-
-// sanitizeBodySnippet truncates s to approximately maxLen bytes (the
-// returned string may be slightly longer due to a " [truncated]" suffix)
-// and replaces all Unicode control characters with spaces for safe single-line logging.
-func sanitizeBodySnippet(s string, maxLen int) string {
-	if len(s) > maxLen {
-		s = s[:maxLen] + " [truncated]"
-	}
-	return strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) {
-			return ' '
-		}
-		return r
-	}, s)
 }

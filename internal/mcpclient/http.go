@@ -68,7 +68,7 @@ func NewHTTPTransport(server *models.RemoteServer, timeout int, skipSSLVerify bo
 }
 
 func (t *httpTransport) Connect(_ context.Context) error {
-	slog.Debug("HTTP transport ready", "url", t.server.URL)
+	slog.Debug("HTTP transport ready", "url", sanitizeURL(t.server.URL))
 	return nil
 }
 
@@ -110,7 +110,7 @@ func (t *httpTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 
 	if strings.Contains(contentType, "text/event-stream") {
 		if resp.StatusCode >= 400 {
-			body, _ := io.ReadAll(resp.Body)
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 			resp.Body.Close()
 			return fmt.Errorf("HTTP send: status %d: %s", resp.StatusCode, string(body))
 		}
@@ -131,11 +131,11 @@ func (t *httpTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 	// Regular JSON response
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return fmt.Errorf("HTTP send: status %d: %s", resp.StatusCode, string(body))
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024)) // 10MB max
 	if err != nil {
 		return fmt.Errorf("read response: %w", err)
 	}

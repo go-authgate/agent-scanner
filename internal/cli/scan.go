@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-authgate/agent-scanner/internal/analysis"
@@ -108,7 +109,30 @@ func parseControlServers() []pipeline.ControlServerConfig {
 		if i < len(scanFlags.ControlIdentifier) {
 			cs.Identifier = scanFlags.ControlIdentifier[i]
 		}
+		if i < len(scanFlags.ControlHeaders) {
+			cs.Headers = parseHeaders(scanFlags.ControlHeaders[i])
+		}
 		servers = append(servers, cs)
 	}
 	return servers
+}
+
+// parseHeaders parses a semicolon-separated header string into a map.
+// Each header is in "Key: Value" format.
+func parseHeaders(raw string) map[string]string {
+	headers := make(map[string]string)
+	for part := range strings.SplitSeq(raw, ";") {
+		part = strings.TrimSpace(part)
+		if key, value, ok := strings.Cut(part, ":"); ok {
+			key = strings.TrimSpace(key)
+			value = strings.TrimSpace(value)
+			if key != "" {
+				headers[key] = value
+			}
+		}
+	}
+	if len(headers) == 0 {
+		return nil
+	}
+	return headers
 }

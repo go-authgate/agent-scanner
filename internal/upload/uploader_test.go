@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-authgate/agent-scanner/internal/httperrors"
 	"github.com/go-authgate/agent-scanner/internal/models"
 )
 
@@ -118,10 +119,10 @@ func TestUpload_4xxNoRetry(t *testing.T) {
 		t.Errorf("expected exactly 1 request (no retry on 4xx), got %d", count)
 	}
 
-	// Verify it's a clientError
-	var ce *clientError
+	// Verify it's a ClientError
+	var ce *httperrors.ClientError
 	if !errors.As(err, &ce) {
-		t.Errorf("expected clientError in chain, got %T: %v", err, err)
+		t.Errorf("expected ClientError in chain, got %T: %v", err, err)
 	}
 }
 

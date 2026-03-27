@@ -3,6 +3,7 @@ package mcpclient
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
 )
@@ -59,6 +60,6 @@ func (c *client) Connect(
 		return nil, fmt.Errorf("connect transport: %w", err)
 	}
 
-	session := NewSession(transport)
+	session := NewSession(transport, time.Duration(timeout)*time.Second)
 	return session, nil
 }

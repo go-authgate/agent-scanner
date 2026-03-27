@@ -21,20 +21,29 @@ type Session interface {
 	Close() error
 }
 
+const defaultCallTimeout = 30 * time.Second
+
 type session struct {
-	transport Transport
-	nextID    atomic.Int64
-	pending   map[int]chan *JSONRPCMessage
-	mu        sync.Mutex
-	done      chan struct{}
+	transport   Transport
+	nextID      atomic.Int64
+	pending     map[int]chan *JSONRPCMessage
+	mu          sync.Mutex
+	done        chan struct{}
+	callTimeout time.Duration
 }
 
 // NewSession creates a new MCP session from a connected transport.
-func NewSession(transport Transport) Session {
+// The timeout parameter controls how long each RPC call waits for a response.
+// If timeout is <= 0, a default of 30 seconds is used.
+func NewSession(transport Transport, timeout time.Duration) Session {
+	if timeout <= 0 {
+		timeout = defaultCallTimeout
+	}
 	s := &session{
-		transport: transport,
-		pending:   make(map[int]chan *JSONRPCMessage),
-		done:      make(chan struct{}),
+		transport:   transport,
+		pending:     make(map[int]chan *JSONRPCMessage),
+		done:        make(chan struct{}),
+		callTimeout: timeout,
 	}
 	go s.readLoop()
 	return s
@@ -96,7 +105,7 @@ func (s *session) call(ctx context.Context, method string, params any) (*JSONRPC
 		delete(s.pending, id)
 		s.mu.Unlock()
 		return nil, ctx.Err()
-	case <-time.After(30 * time.Second):
+	case <-time.After(s.callTimeout):
 		s.mu.Lock()
 		delete(s.pending, id)
 		s.mu.Unlock()
