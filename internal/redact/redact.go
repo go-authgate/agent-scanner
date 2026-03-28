@@ -7,7 +7,8 @@ import (
 	"github.com/go-authgate/agent-scanner/internal/models"
 )
 
-const redactedValue = "**REDACTED**"
+// RedactedValue is the placeholder used when redacting sensitive data.
+const RedactedValue = "**REDACTED**"
 
 var absolutePathPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?:/[a-zA-Z0-9._-]+){3,}`), // Unix paths
@@ -20,7 +21,7 @@ var absolutePathPatterns = []*regexp.Regexp{
 // AbsolutePaths replaces absolute file paths in text.
 func AbsolutePaths(text string) string {
 	for _, pattern := range absolutePathPatterns {
-		text = pattern.ReplaceAllString(text, redactedValue)
+		text = pattern.ReplaceAllString(text, RedactedValue)
 	}
 	return text
 }
@@ -31,22 +32,22 @@ func ServerResult(result *models.ServerScanResult) {
 	case *models.StdioServer:
 		// Redact environment variable values
 		for k := range srv.Env {
-			srv.Env[k] = redactedValue
+			srv.Env[k] = RedactedValue
 		}
 		// Redact command arguments that look like paths or secrets
 		for i, arg := range srv.Args {
-			if isPath(arg) || LooksLikeSecret(arg) {
-				srv.Args[i] = redactedValue
+			if IsPath(arg) || LooksLikeSecret(arg) {
+				srv.Args[i] = RedactedValue
 			}
 		}
 	case *models.RemoteServer:
 		// Redact header values
 		for k := range srv.Headers {
-			srv.Headers[k] = redactedValue
+			srv.Headers[k] = RedactedValue
 		}
 		// Redact URL query parameters
 		if idx := strings.IndexByte(srv.URL, '?'); idx >= 0 {
-			srv.URL = srv.URL[:idx] + "?" + redactedValue
+			srv.URL = srv.URL[:idx] + "?" + RedactedValue
 		}
 	}
 
@@ -66,7 +67,8 @@ func ScanPathResult(result *models.ScanPathResult) {
 	}
 }
 
-func isPath(arg string) bool {
+// IsPath returns true if arg looks like an absolute or home-relative file path.
+func IsPath(arg string) bool {
 	if len(arg) == 0 {
 		return false
 	}
@@ -74,15 +76,16 @@ func isPath(arg string) bool {
 		(len(arg) >= 3 && arg[1] == ':' && (arg[2] == '\\' || arg[2] == '/'))
 }
 
-// secretPrefixes lists known API key and token prefixes (case-insensitive match).
+// secretPrefixes lists known API key and token prefixes, pre-lowercased for
+// efficient case-insensitive matching.
 var secretPrefixes = []string{
 	"sk-",             // OpenAI / generic
 	"sk-ant-",         // Anthropic
 	"ghp_",            // GitHub personal access token
 	"gho_",            // GitHub OAuth token
 	"github_pat_",     // GitHub fine-grained PAT
-	"Bearer ",         // Authorization bearer token
-	"AKIA",            // AWS access key ID
+	"bearer ",         // Authorization bearer token
+	"akia",            // AWS access key ID
 	"xoxb-",           // Slack bot token
 	"xoxp-",           // Slack user token
 	"xapp-",           // Slack app token
@@ -94,14 +97,14 @@ var secretPrefixes = []string{
 	"sk_live_",        // Stripe live secret key
 	"sk_test_",        // Stripe test secret key
 	"rk_live_",        // Stripe restricted key
-	"AGE-SECRET-KEY-", // age encryption key
+	"age-secret-key-", // age encryption key
 }
 
 // LooksLikeSecret returns true if arg looks like an API key or secret token.
 func LooksLikeSecret(arg string) bool {
 	lower := strings.ToLower(arg)
 	for _, prefix := range secretPrefixes {
-		if strings.HasPrefix(lower, strings.ToLower(prefix)) {
+		if strings.HasPrefix(lower, prefix) {
 			return true
 		}
 	}

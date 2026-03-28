@@ -99,12 +99,16 @@ func (t *stdioTransport) readStdout() {
 	}
 }
 
+const maxStderrLines = 10000
+
 func (t *stdioTransport) readStderr() {
 	scanner := bufio.NewScanner(t.stderr)
 	for scanner.Scan() {
 		line := scanner.Text()
 		t.mu.Lock()
-		t.lines = append(t.lines, line)
+		if len(t.lines) < maxStderrLines {
+			t.lines = append(t.lines, line)
+		}
 		t.mu.Unlock()
 		slog.Debug("server stderr", "line", line)
 	}

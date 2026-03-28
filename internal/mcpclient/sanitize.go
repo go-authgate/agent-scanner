@@ -17,7 +17,7 @@ func sanitizeURL(rawURL string) string {
 	}
 	q := u.Query()
 	for key := range q {
-		q.Set(key, "**REDACTED**")
+		q.Set(key, redact.RedactedValue)
 	}
 	u.RawQuery = q.Encode()
 	return u.String()
@@ -27,20 +27,11 @@ func sanitizeURL(rawURL string) string {
 func sanitizeArgs(args []string) []string {
 	out := make([]string, len(args))
 	for i, arg := range args {
-		if isPath(arg) || redact.LooksLikeSecret(arg) {
-			out[i] = "**REDACTED**"
+		if redact.IsPath(arg) || redact.LooksLikeSecret(arg) {
+			out[i] = redact.RedactedValue
 		} else {
 			out[i] = arg
 		}
 	}
 	return out
-}
-
-// isPath returns true if arg looks like an absolute or home-relative path.
-func isPath(arg string) bool {
-	if len(arg) == 0 {
-		return false
-	}
-	return arg[0] == '/' || arg[0] == '~' ||
-		(len(arg) >= 3 && arg[1] == ':' && (arg[2] == '\\' || arg[2] == '/'))
 }

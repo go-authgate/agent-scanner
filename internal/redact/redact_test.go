@@ -12,9 +12,9 @@ func TestAbsolutePaths(t *testing.T) {
 		input    string
 		contains string
 	}{
-		{"/Users/john/Documents/secret.txt", redactedValue},
-		{"C:\\Users\\john\\secret.txt", redactedValue},
-		{"~/Documents/secret.txt", redactedValue},
+		{"/Users/john/Documents/secret.txt", RedactedValue},
+		{"C:\\Users\\john\\secret.txt", RedactedValue},
+		{"~/Documents/secret.txt", RedactedValue},
 	}
 
 	for _, tt := range tests {
@@ -42,10 +42,10 @@ func TestServerResult_Stdio(t *testing.T) {
 	ServerResult(result)
 
 	stdio := result.Server.(*models.StdioServer)
-	if stdio.Env["API_KEY"] != redactedValue {
+	if stdio.Env["API_KEY"] != RedactedValue {
 		t.Errorf("expected env redacted, got %s", stdio.Env["API_KEY"])
 	}
-	if stdio.Args[1] != redactedValue {
+	if stdio.Args[1] != RedactedValue {
 		t.Errorf("expected path arg redacted, got %s", stdio.Args[1])
 	}
 }
@@ -61,7 +61,7 @@ func TestServerResult_Remote(t *testing.T) {
 	ServerResult(result)
 
 	remote := result.Server.(*models.RemoteServer)
-	if remote.Headers["Authorization"] != redactedValue {
+	if remote.Headers["Authorization"] != RedactedValue {
 		t.Errorf("expected header redacted, got %s", remote.Headers["Authorization"])
 	}
 	if strings.Contains(remote.URL, "secret123") {
@@ -83,8 +83,8 @@ func TestIsPath(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := isPath(tt.arg); got != tt.expected {
-			t.Errorf("isPath(%q) = %v, want %v", tt.arg, got, tt.expected)
+		if got := IsPath(tt.arg); got != tt.expected {
+			t.Errorf("IsPath(%q) = %v, want %v", tt.arg, got, tt.expected)
 		}
 	}
 }
