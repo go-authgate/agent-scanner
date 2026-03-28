@@ -11,6 +11,14 @@ import (
 
 // ParseSkillDirectory reads a skill directory and returns its signature.
 func ParseSkillDirectory(path string) (*models.ServerSignature, error) {
+	// Resolve symlinks on the base path so traverseSkillTree can
+	// verify that all children stay within the real directory.
+	resolvedPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return nil, fmt.Errorf("resolve skill directory: %w", err)
+	}
+	path = resolvedPath
+
 	// Find SKILL.md
 	skillMDPath := findSkillMD(path)
 	if skillMDPath == "" {
@@ -104,7 +112,15 @@ func parseSkillFrontmatter(content string) (string, string) {
 	return name, description
 }
 
+// isWithinBase checks that resolved stays within the resolvedBase directory.
+func isWithinBase(resolvedBase, resolved string) bool {
+	// Ensure base ends with separator for prefix check
+	base := resolvedBase + string(filepath.Separator)
+	return resolved == resolvedBase || strings.HasPrefix(resolved, base)
+}
+
 // traverseSkillTree recursively scans a skill directory for entities.
+// basePath must already be resolved via filepath.EvalSymlinks.
 func traverseSkillTree(
 	basePath, relativePath string,
 ) ([]models.Prompt, []models.Resource, []models.Tool) {
@@ -127,7 +143,16 @@ func traverseSkillTree(
 		relPath := filepath.Join(relativePath, name)
 		fullPath := filepath.Join(basePath, relPath)
 
-		if entry.IsDir() {
+		// Resolve symlinks and verify the target stays within basePath
+		resolved, err := filepath.EvalSymlinks(fullPath)
+		if err != nil {
+			continue
+		}
+		if !isWithinBase(basePath, resolved) {
+			continue
+		}
+
+		if entry.IsDir() || (entry.Type()&os.ModeSymlink != 0 && isDir(resolved)) {
 			p, r, t := traverseSkillTree(basePath, relPath)
 			prompts = append(prompts, p...)
 			resources = append(resources, r...)
@@ -141,7 +166,7 @@ func traverseSkillTree(
 		}
 
 		ext := strings.ToLower(filepath.Ext(name))
-		content, err := os.ReadFile(fullPath)
+		content, err := os.ReadFile(resolved)
 		if err != nil {
 			continue
 		}
@@ -167,6 +192,11 @@ func traverseSkillTree(
 	}
 
 	return prompts, resources, tools
+}
+
+func isDir(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
 }
 
 func guessMimeType(ext string) string {

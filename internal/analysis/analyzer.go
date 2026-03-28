@@ -9,32 +9,12 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
-	"unicode"
 
+	"github.com/go-authgate/agent-scanner/internal/httperrors"
 	"github.com/go-authgate/agent-scanner/internal/models"
 	"github.com/go-authgate/agent-scanner/internal/tlsutil"
 )
-
-// clientError is a non-retryable HTTP error (4xx).
-type clientError struct {
-	StatusCode int
-	Body       string
-}
-
-func (e *clientError) Error() string {
-	return fmt.Sprintf("status %d: %s", e.StatusCode, e.Body)
-}
-
-// nonRetryableError wraps errors that should not be retried
-// (e.g., request construction failures, JSON decode errors).
-type nonRetryableError struct {
-	err error
-}
-
-func (e *nonRetryableError) Error() string { return e.err.Error() }
-func (e *nonRetryableError) Unwrap() error { return e.err }
 
 // Analyzer performs security analysis on scan results.
 type Analyzer interface {
@@ -144,12 +124,12 @@ func (a *remoteAnalyzer) analyzePathResult(
 			break
 		}
 		// Do not retry non-retryable errors (bad URL, JSON decode, etc.)
-		var nre *nonRetryableError
+		var nre *httperrors.NonRetryableError
 		if errors.As(err, &nre) {
 			return fmt.Errorf("analysis API: %w", err)
 		}
 		// Do not retry client errors (4xx)
-		var ce *clientError
+		var ce *httperrors.ClientError
 		if errors.As(err, &ce) {
 			return fmt.Errorf("analysis API: %w", err)
 		}
@@ -182,7 +162,7 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return &nonRetryableError{err: err}
+		return &httperrors.NonRetryableError{Err: err}
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -194,30 +174,15 @@ func (a *remoteAnalyzer) doRequest(ctx context.Context, body []byte, resp *analy
 
 	if httpResp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(io.LimitReader(httpResp.Body, 4096))
-		bodySnippet := sanitizeBodySnippet(string(respBody), 512)
+		bodySnippet := httperrors.SanitizeBodySnippet(string(respBody), 512)
 		if httpResp.StatusCode < 500 {
-			return &clientError{StatusCode: httpResp.StatusCode, Body: bodySnippet}
+			return &httperrors.ClientError{StatusCode: httpResp.StatusCode, Body: bodySnippet}
 		}
 		return fmt.Errorf("status %d: %s", httpResp.StatusCode, bodySnippet)
 	}
 
 	if err := json.NewDecoder(httpResp.Body).Decode(resp); err != nil {
-		return &nonRetryableError{err: fmt.Errorf("decode response: %w", err)}
+		return &httperrors.NonRetryableError{Err: fmt.Errorf("decode response: %w", err)}
 	}
 	return nil
-}
-
-// sanitizeBodySnippet truncates s to approximately maxLen bytes (the
-// returned string may be slightly longer due to a " [truncated]" suffix)
-// and replaces all Unicode control characters with spaces for safe single-line logging.
-func sanitizeBodySnippet(s string, maxLen int) string {
-	if len(s) > maxLen {
-		s = s[:maxLen] + " [truncated]"
-	}
-	return strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) {
-			return ' '
-		}
-		return r
-	}, s)
 }

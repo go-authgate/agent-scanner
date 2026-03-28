@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -59,7 +60,7 @@ func (t *sseTransport) Connect(ctx context.Context) error {
 
 	go t.readSSE(resp.Body)
 
-	slog.Debug("SSE transport connected", "url", t.server.URL)
+	slog.Debug("SSE transport connected", "url", sanitizeURL(t.server.URL))
 	return nil
 }
 
@@ -97,20 +98,43 @@ func (t *sseTransport) readSSE(body io.ReadCloser) {
 	}
 }
 
+// resolveEndpointURL resolves and validates an endpoint URL received from an SSE
+// server. Absolute URLs must share the same origin (scheme+host) as the base
+// server URL to prevent SSRF. Relative URLs are resolved against the base.
+func resolveEndpointURL(baseURL, endpoint string) (string, error) {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("parse base URL: %w", err)
+	}
+
+	ep, err := url.Parse(endpoint)
+	if err != nil {
+		return "", fmt.Errorf("parse endpoint URL: %w", err)
+	}
+
+	resolved := base.ResolveReference(ep)
+
+	// Validate same origin (scheme + host)
+	if resolved.Scheme != base.Scheme || resolved.Host != base.Host {
+		return "", fmt.Errorf(
+			"endpoint origin %s://%s does not match server origin %s://%s",
+			resolved.Scheme, resolved.Host, base.Scheme, base.Host,
+		)
+	}
+
+	return resolved.String(), nil
+}
+
 func (t *sseTransport) handleSSEEvent(eventType, data string) {
 	switch eventType {
 	case "endpoint":
-		// The server sends the message endpoint URL
-		t.messageURL = data
-		if !strings.HasPrefix(t.messageURL, "http") {
-			// Relative URL — resolve against base
-			base := t.server.URL
-			if idx := strings.LastIndex(base, "/"); idx > 8 { // After "https://"
-				base = base[:idx]
-			}
-			t.messageURL = base + "/" + strings.TrimPrefix(t.messageURL, "/")
+		resolved, err := resolveEndpointURL(t.server.URL, data)
+		if err != nil {
+			slog.Warn("rejecting SSE endpoint", "error", err, "endpoint", data)
+			return
 		}
-		slog.Debug("SSE endpoint received", "url", t.messageURL)
+		t.messageURL = resolved
+		slog.Debug("SSE endpoint received", "url", sanitizeURL(t.messageURL))
 	case "message", "":
 		var msg JSONRPCMessage
 		if err := json.Unmarshal([]byte(data), &msg); err != nil {
@@ -152,7 +176,7 @@ func (t *sseTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return fmt.Errorf("SSE send: status %d: %s", resp.StatusCode, string(body))
 	}
 
