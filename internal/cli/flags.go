@@ -7,7 +7,6 @@ type CommonFlags struct {
 	StorageFile      string
 	AnalysisURL      string
 	VerificationH    []string
-	OAuthTokensPath  string
 	Verbose          bool
 	PrintErrors      bool
 	PrintFullDescs   bool
@@ -47,8 +46,6 @@ func addCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&commonFlags.AnalysisURL, "analysis-url", "", "Verification server URL")
 	cmd.Flags().
 		StringSliceVar(&commonFlags.VerificationH, "verification-H", nil, "Additional headers for verification API")
-	cmd.Flags().
-		StringVar(&commonFlags.OAuthTokensPath, "mcp-oauth-tokens-path", "", "OAuth token storage path")
 	cmd.Flags().BoolVar(&commonFlags.Verbose, "verbose", false, "Enable verbose logging")
 	cmd.Flags().
 		BoolVar(&commonFlags.PrintErrors, "print-errors", false, "Print server startup errors/tracebacks")
