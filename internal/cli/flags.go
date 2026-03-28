@@ -31,7 +31,6 @@ type MCPServerFlags struct {
 	Tool         bool
 	Background   bool
 	ScanInterval int
-	ClientName   string
 }
 
 var (

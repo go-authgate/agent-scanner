@@ -37,10 +37,10 @@ func (t *stdioTransport) Connect(ctx context.Context) error {
 	command := t.server.Command
 	args := t.server.Args
 
-	// Resolve command path
-	path, err := exec.LookPath(command)
+	// Resolve command path (with fallback to common install dirs)
+	path, err := resolveCommand(command)
 	if err != nil {
-		return fmt.Errorf("command not found: %s: %w", command, err)
+		return fmt.Errorf("resolve command: %w", err)
 	}
 
 	t.cmd = exec.CommandContext(ctx, path, args...)

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"os/user"
@@ -46,10 +47,28 @@ func (u *uploader) Upload(
 		return nil
 	}
 
-	// Redact sensitive data before upload
+	// Deep-clone results before redaction to avoid mutating the caller's data.
+	// redact.ScanPathResult modifies Server configs (Env, Headers, Args) in place,
+	// so we must clone the server pointers, not just the slice.
 	redacted := make([]models.ScanPathResult, len(results))
 	copy(redacted, results)
 	for i := range redacted {
+		if redacted[i].Error != nil {
+			errCopy := *redacted[i].Error
+			redacted[i].Error = &errCopy
+		}
+		if len(redacted[i].Servers) > 0 {
+			servers := make([]models.ServerScanResult, len(redacted[i].Servers))
+			copy(servers, redacted[i].Servers)
+			for j := range servers {
+				servers[j].Server = cloneServerConfig(servers[j].Server)
+				if servers[j].Error != nil {
+					errCopy := *servers[j].Error
+					servers[j].Error = &errCopy
+				}
+			}
+			redacted[i].Servers = servers
+		}
 		redact.ScanPathResult(&redacted[i])
 	}
 
@@ -133,6 +152,33 @@ func (u *uploader) doUpload(ctx context.Context, server models.ControlServer, bo
 	_, _ = io.Copy(io.Discard, resp.Body)
 
 	return nil
+}
+
+// cloneServerConfig returns a deep copy of a ServerConfig to avoid
+// mutating the original during redaction.
+func cloneServerConfig(cfg models.ServerConfig) models.ServerConfig {
+	switch s := cfg.(type) {
+	case *models.StdioServer:
+		c := *s
+		if s.Env != nil {
+			c.Env = make(map[string]string, len(s.Env))
+			maps.Copy(c.Env, s.Env)
+		}
+		if s.Args != nil {
+			c.Args = make([]string, len(s.Args))
+			copy(c.Args, s.Args)
+		}
+		return &c
+	case *models.RemoteServer:
+		c := *s
+		if s.Headers != nil {
+			c.Headers = make(map[string]string, len(s.Headers))
+			maps.Copy(c.Headers, s.Headers)
+		}
+		return &c
+	default:
+		return cfg
+	}
 }
 
 func getHostname() string {

@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"fmt"
+
+	"github.com/go-authgate/agent-scanner/internal/mcpserver"
 	"github.com/spf13/cobra"
 )
 
@@ -15,8 +18,25 @@ func newInstallCmd() *cobra.Command {
 	return cmd
 }
 
-func runInstall(cmd *cobra.Command, _ []string) error {
-	// TODO: Implement MCP server installation in Phase 8
-	cmd.Println("MCP server installation not yet implemented")
+func runInstall(cmd *cobra.Command, args []string) error {
+	var configPath string
+	if len(args) > 0 {
+		configPath = args[0]
+	}
+
+	if configPath == "" {
+		defaultPath, err := mcpserver.DefaultConfigPath()
+		if err != nil {
+			return err
+		}
+		configPath = defaultPath
+		cmd.Printf("No config file specified, using default: %s\n", configPath)
+	}
+
+	if err := mcpserver.InstallServer(configPath); err != nil {
+		return fmt.Errorf("installation failed: %w", err)
+	}
+
+	cmd.Printf("Successfully installed agent-scanner as MCP server in %s\n", configPath)
 	return nil
 }

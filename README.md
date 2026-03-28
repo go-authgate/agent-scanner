@@ -11,6 +11,7 @@ Inspired by [snyk/agent-scan](https://github.com/snyk/agent-scan), reimplemented
 - **13 security rules** detecting prompt injections, tool shadowing, hardcoded secrets, malicious code, toxic flows, and more
 - **Skill scanning** for agent skill directories containing `SKILL.md`
 - **Direct scanning** from package managers (`npm:`, `pypi:`, `oci://`) and URLs (`sse://`, `streamable-http://`)
+- **MCP server mode** — run agent-scanner itself as an MCP server with background periodic scanning
 - **Cross-platform** support (macOS, Linux, Windows)
 - **Single binary** with zero runtime dependencies
 
@@ -92,6 +93,33 @@ List tools, prompts, and resources without security analysis:
 
 ```bash
 agent-scanner inspect
+```
+
+### MCP Server Mode
+
+Run agent-scanner as an MCP server, exposing `scan` and `get_scan_results` tools:
+
+```bash
+agent-scanner mcp-server
+```
+
+Run in tool-only mode (no background scanning):
+
+```bash
+agent-scanner mcp-server --tool
+```
+
+Customize the background scan interval:
+
+```bash
+agent-scanner mcp-server --scan-interval 60
+```
+
+Install agent-scanner into Claude Desktop configuration:
+
+```bash
+agent-scanner install-mcp-server
+agent-scanner install-mcp-server ~/.config/claude/claude_desktop_config.json
 ```
 
 ### Options
