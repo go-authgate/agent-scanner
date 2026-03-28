@@ -154,7 +154,7 @@ func TestCaptureTransport_CapturesSentMessages(t *testing.T) {
 	}
 
 	for i, cm := range msgs {
-		if cm.Direction != "sent" {
+		if cm.Direction != DirectionSent {
 			t.Errorf("message[%d]: expected direction=sent, got %s", i, cm.Direction)
 		}
 		if cm.Timestamp.Before(before) || cm.Timestamp.After(after) {
@@ -204,7 +204,7 @@ func TestCaptureTransport_CapturesReceivedMessages(t *testing.T) {
 	}
 
 	for i, cm := range msgs {
-		if cm.Direction != "received" {
+		if cm.Direction != DirectionReceived {
 			t.Errorf("message[%d]: expected direction=received, got %s", i, cm.Direction)
 		}
 		if cm.Timestamp.Before(before) || cm.Timestamp.After(after) {
@@ -240,13 +240,13 @@ func TestCaptureTransport_MessagesReturnsCopy(t *testing.T) {
 	copy1[0].Direction = "mutated"
 
 	copy3 := ct.Messages()
-	if copy3[0].Direction != "sent" {
+	if copy3[0].Direction != DirectionSent {
 		t.Errorf(
 			"expected Messages() to return independent copy; got direction=%s",
 			copy3[0].Direction,
 		)
 	}
-	if copy2[0].Direction != "sent" {
+	if copy2[0].Direction != DirectionSent {
 		t.Errorf("expected earlier copy to be unaffected; got direction=%s", copy2[0].Direction)
 	}
 }
@@ -279,7 +279,7 @@ func TestCaptureTransport_MixedSentAndReceived(t *testing.T) {
 	}
 
 	// First should be the sent message.
-	if msgs[0].Direction != "sent" {
+	if msgs[0].Direction != DirectionSent {
 		t.Errorf("expected first message direction=sent, got %s", msgs[0].Direction)
 	}
 	if msgs[0].Message.Method != "request" {
@@ -287,7 +287,7 @@ func TestCaptureTransport_MixedSentAndReceived(t *testing.T) {
 	}
 
 	// Second should be the received message.
-	if msgs[1].Direction != "received" {
+	if msgs[1].Direction != DirectionReceived {
 		t.Errorf("expected second message direction=received, got %s", msgs[1].Direction)
 	}
 	if msgs[1].Message.Method != "response" {

@@ -7,9 +7,15 @@ import (
 	"time"
 )
 
+// Direction constants for captured messages.
+const (
+	DirectionSent     = "sent"
+	DirectionReceived = "received"
+)
+
 // CapturedMessage represents a captured JSON-RPC message.
 type CapturedMessage struct {
-	Direction string          // "sent" or "received"
+	Direction string          // DirectionSent or DirectionReceived
 	Timestamp time.Time       // when the message was captured
 	Message   *JSONRPCMessage // the captured message
 }
@@ -39,7 +45,7 @@ func (t *CaptureTransport) Connect(ctx context.Context) error {
 func (t *CaptureTransport) Send(ctx context.Context, msg *JSONRPCMessage) error {
 	t.mu.Lock()
 	t.messages = append(t.messages, CapturedMessage{
-		Direction: "sent",
+		Direction: DirectionSent,
 		Timestamp: time.Now(),
 		Message:   cloneJSONRPCMessage(msg),
 	})
@@ -59,7 +65,7 @@ func (t *CaptureTransport) Receive() <-chan *JSONRPCMessage {
 			for msg := range innerCh {
 				t.mu.Lock()
 				t.messages = append(t.messages, CapturedMessage{
-					Direction: "received",
+					Direction: DirectionReceived,
 					Timestamp: time.Now(),
 					Message:   cloneJSONRPCMessage(msg),
 				})

@@ -164,7 +164,7 @@ func NewServer(cfg ServerConfig) (*mcp.Server, *ScanState) {
 
 		output := scanOutput{
 			Results: redacted,
-			Summary: buildSummary(results),
+			Summary: buildSummary(redacted),
 		}
 
 		// Also provide a text summary in the content for easy consumption

@@ -1,42 +1,10 @@
 package testserver
 
-import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"os"
-)
-
 // RunWeatherServer runs a test MCP server with weather tools that contain
 // suspicious descriptions for testing security rule detection.
 // It communicates via stdin/stdout JSON-RPC 2.0.
 func RunWeatherServer() {
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-
-		var msg jsonRPCMessage
-		if err := json.Unmarshal([]byte(line), &msg); err != nil {
-			continue
-		}
-
-		resp := handleWeatherMessage(&msg)
-		if resp == nil {
-			// Notification — no response needed.
-			continue
-		}
-
-		data, err := json.Marshal(resp)
-		if err != nil {
-			continue
-		}
-		fmt.Fprintln(os.Stdout, string(data))
-	}
+	runServer(handleWeatherMessage)
 }
 
 func handleWeatherMessage(msg *jsonRPCMessage) *jsonRPCMessage {

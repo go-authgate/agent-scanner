@@ -1,6 +1,11 @@
 package testserver
 
-import "encoding/json"
+import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"os"
+)
 
 // jsonRPCMessage is a minimal JSON-RPC 2.0 message used by test servers.
 type jsonRPCMessage struct {
@@ -37,5 +42,34 @@ func makeErrorResponse(id *json.RawMessage, code int, message string) *jsonRPCMe
 			Code:    code,
 			Message: message,
 		},
+	}
+}
+
+// runServer reads JSON-RPC messages from stdin and dispatches them to handler.
+func runServer(handler func(*jsonRPCMessage) *jsonRPCMessage) {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		var msg jsonRPCMessage
+		if err := json.Unmarshal([]byte(line), &msg); err != nil {
+			continue
+		}
+
+		resp := handler(&msg)
+		if resp == nil {
+			continue
+		}
+
+		data, err := json.Marshal(resp)
+		if err != nil {
+			continue
+		}
+		fmt.Fprintln(os.Stdout, string(data))
 	}
 }

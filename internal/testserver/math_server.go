@@ -1,41 +1,9 @@
 package testserver
 
-import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"os"
-)
-
 // RunMathServer runs a test MCP server with basic math tools.
 // It communicates via stdin/stdout JSON-RPC 2.0.
 func RunMathServer() {
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-
-		var msg jsonRPCMessage
-		if err := json.Unmarshal([]byte(line), &msg); err != nil {
-			continue
-		}
-
-		resp := handleMathMessage(&msg)
-		if resp == nil {
-			// Notification — no response needed.
-			continue
-		}
-
-		data, err := json.Marshal(resp)
-		if err != nil {
-			continue
-		}
-		fmt.Fprintln(os.Stdout, string(data))
-	}
+	runServer(handleMathMessage)
 }
 
 func handleMathMessage(msg *jsonRPCMessage) *jsonRPCMessage {
