@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-authgate/agent-scanner/internal/models"
+	"github.com/go-authgate/agent-scanner/internal/redact"
 	"github.com/go-authgate/agent-scanner/internal/version"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -53,6 +54,16 @@ func copyScanResults(src []models.ScanPathResult) []models.ScanPathResult {
 	dst := make([]models.ScanPathResult, len(src))
 	copy(dst, src)
 	return dst
+}
+
+// redactResults returns a deep copy of results with sensitive fields redacted.
+func redactResults(results []models.ScanPathResult) []models.ScanPathResult {
+	redacted := make([]models.ScanPathResult, len(results))
+	copy(redacted, results)
+	for i := range redacted {
+		redact.ScanPathResult(&redacted[i])
+	}
+	return redacted
 }
 
 // scanInput is the typed input for the scan tool.
@@ -145,11 +156,14 @@ func NewServer(cfg ServerConfig) (*mcp.Server, *ScanState) {
 			return nil, scanOutput{}, fmt.Errorf("scan failed: %w", err)
 		}
 
-		// Cache the results
-		state.Set(results)
+		// Redact sensitive data (env vars, headers) before caching and returning
+		redacted := redactResults(results)
+
+		// Cache the redacted results
+		state.Set(redacted)
 
 		output := scanOutput{
-			Results: results,
+			Results: redacted,
 			Summary: buildSummary(results),
 		}
 
@@ -207,7 +221,7 @@ func RunServer(ctx context.Context, cfg ServerConfig) error {
 	// If background scanning is enabled, run initial scan and start periodic scanning
 	if cfg.Background && cfg.ScanFn != nil {
 		interval := cfg.ScanInterval
-		if interval == 0 {
+		if interval <= 0 {
 			interval = 30 * time.Minute
 		}
 
@@ -219,7 +233,7 @@ func RunServer(ctx context.Context, cfg ServerConfig) error {
 				slog.Error("initial background scan failed", "error", err)
 				return
 			}
-			state.Set(results)
+			state.Set(redactResults(results))
 			slog.Info("initial background scan complete",
 				"paths", len(results),
 			)
@@ -240,7 +254,7 @@ func RunServer(ctx context.Context, cfg ServerConfig) error {
 						slog.Error("periodic background scan failed", "error", err)
 						continue
 					}
-					state.Set(results)
+					state.Set(redactResults(results))
 					slog.Info("periodic background scan complete",
 						"paths", len(results),
 					)

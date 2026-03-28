@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -25,6 +26,9 @@ func mockScanResults() []models.ScanPathResult {
 					Server: &models.StdioServer{
 						Command: "test-cmd",
 						Args:    []string{"--flag"},
+						Env: map[string]string{
+							"API_KEY": "sk-secret-12345",
+						},
 					},
 					Signature: &models.ServerSignature{
 						Metadata: models.InitializeResult{
@@ -325,6 +329,78 @@ func TestGetScanResults_ReturnsCachedResults(t *testing.T) {
 	if totalIssues := summary["total_issues"].(float64); totalIssues != 2 {
 		t.Errorf("expected 2 issues in cached results, got %v", totalIssues)
 	}
+}
+
+func TestScanTool_RedactsSensitiveData(t *testing.T) {
+	cfg := ServerConfig{
+		ScanFn: func(_ context.Context, _ []string, _ bool) ([]models.ScanPathResult, error) {
+			return mockScanResults(), nil
+		},
+	}
+
+	server, state := NewServer(cfg)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "v1.0.0"}, nil)
+
+	t1, t2 := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(ctx, t1, nil); err != nil {
+		t.Fatalf("server.Connect failed: %v", err)
+	}
+	session, err := client.Connect(ctx, t2, nil)
+	if err != nil {
+		t.Fatalf("client.Connect failed: %v", err)
+	}
+	defer session.Close()
+
+	// Call scan
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "scan",
+	})
+	if err != nil {
+		t.Fatalf("CallTool scan failed: %v", err)
+	}
+
+	// Verify the response JSON has redacted env values
+	textContent, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("expected TextContent, got %T", result.Content[0])
+	}
+
+	if strings.Contains(textContent.Text, "sk-secret-12345") {
+		t.Error("scan response should not contain raw API key")
+	}
+
+	// Verify cached results are also redacted
+	cached := state.Get()
+	if len(cached) == 0 {
+		t.Fatal("expected cached results")
+	}
+	stdio, ok := cached[0].Servers[0].Server.(*models.StdioServer)
+	if !ok {
+		t.Fatal("expected StdioServer")
+	}
+	if v, exists := stdio.Env["API_KEY"]; exists && v == "sk-secret-12345" {
+		t.Error("cached results should have redacted API_KEY")
+	}
+}
+
+func TestRunServer_NegativeScanInterval(t *testing.T) {
+	cfg := ServerConfig{
+		ScanFn: func(_ context.Context, _ []string, _ bool) ([]models.ScanPathResult, error) {
+			return nil, nil
+		},
+		Background:   true,
+		ScanInterval: -1 * time.Second,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	// RunServer should not panic with negative interval
+	_ = RunServer(ctx, cfg)
 }
 
 func TestBuildSummary(t *testing.T) {
